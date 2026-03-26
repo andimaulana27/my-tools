@@ -3,9 +3,10 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
-import { Loader2, Lock, User, Sparkles } from "lucide-react";
+import { Loader2, Lock, User, Sparkles, ArrowLeft } from "lucide-react";
 
 // Variabel Konfigurasi untuk Elemen Latar Belakang Melayang
 const floatingShapes = [
@@ -85,6 +86,24 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background p-4 antialiased">
       
+      {/* Tombol Kembali ke Home (Floating Top Left) */}
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="absolute top-6 left-6 md:top-8 md:left-8 z-50"
+      >
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-white transition-colors group"
+        >
+          <div className="p-2 bg-white/5 rounded-full border border-white/10 group-hover:bg-white/10 transition-colors shadow-inner">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          </div>
+          Back to Home
+        </Link>
+      </motion.div>
+
       {/* Efek Mouse Following (Senter Interaktif) */}
       <div 
         className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300 mix-blend-screen"
@@ -130,7 +149,7 @@ export default function LoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} // Custom ease-out expo
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} 
         className="w-full max-w-md relative z-10"
       >
 
@@ -165,7 +184,7 @@ export default function LoginPage() {
               <label className="text-sm font-semibold text-gray-300 ml-1">Username</label>
               <motion.div 
                 className="relative group/input"
-                whileFocus={{ scale: 1.02 }} // BARU: Animasi Scaling saat Fokus
+                whileFocus={{ scale: 1.02 }} 
                 transition={{ duration: 0.2 }}
               >
                 <motion.div
@@ -190,7 +209,7 @@ export default function LoginPage() {
               <label className="text-sm font-semibold text-gray-300 ml-1">Password</label>
               <motion.div 
                 className="relative group/input"
-                whileFocus={{ scale: 1.02 }} // BARU: Animasi Scaling saat Fokus
+                whileFocus={{ scale: 1.02 }} 
                 transition={{ duration: 0.2 }}
               >
                 <motion.div
@@ -215,8 +234,8 @@ export default function LoginPage() {
               type="submit"
               disabled={loading}
               className="w-full relative mt-6 bg-white text-black font-bold rounded-xl py-3.5 flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)] overflow-hidden group/btn"
-              whileHover={{ scale: 1.01, transition: { duration: 0.2 } }} // BARU: Hover Scale halus
-              whileTap={{ scale: 0.98 }} // BARU: Efek Membal saat Diklik
+              whileHover={{ scale: 1.01, transition: { duration: 0.2 } }} 
+              whileTap={{ scale: 0.98 }} 
             >
               {/* BARU: Efek Shimmer Kilauan saat Hover */}
               <div className="absolute inset-0 w-full h-full transform -translate-x-full group-hover/btn:translate-x-full bg-gradient-to-r from-transparent via-black/10 to-transparent transition-transform duration-700 ease-in-out" style={{ transitionDelay: '0.1s' }} />
