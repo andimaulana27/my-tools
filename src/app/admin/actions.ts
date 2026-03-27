@@ -60,7 +60,28 @@ export async function deleteAuthUser(userId: string) {
   }
 }
 
-// FUNGSI BARU: Cek status sistem dan environment variable (berjalan aman di server)
+// FUNGSI BARU: Reset Password oleh Admin tanpa memerlukan sandi lama
+export async function updateUserPassword(userId: string, newPassword: string) {
+  try {
+    // HAPUS 'data,' dari sini, cukup ambil 'error'
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
+    
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Terjadi kesalahan sistem yang tidak diketahui." };
+  }
+}
+
+// Cek status sistem dan environment variable (berjalan aman di server)
 export async function getSystemStatus() {
   return {
     geminiConfigured: !!process.env.GEMINI_API_KEY,

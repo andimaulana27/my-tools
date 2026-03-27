@@ -11,6 +11,8 @@
   "dependencies": {
     "@google/genai": "^1.46.0",
     "@supabase/supabase-js": "^2.100.0",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
