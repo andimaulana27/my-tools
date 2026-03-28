@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Image as ImageIcon, Sparkles, ArrowRight } from "lucide-react";
+import { Image as ImageIcon, Sparkles, ArrowRight, Palette } from "lucide-react";
 
 export default function UserDashboard() {
   const tools = [
@@ -33,6 +33,19 @@ export default function UserDashboard() {
       gradientTo: "to-canva-purple",
       shadowHover: "hover:shadow-canva-purple/20"
     },
+    {
+      id: "image-engine",
+      name: "AI Image Generator",
+      description: "Buat variasi aset desain, ilustrasi, dan vektor secara batch untuk portfolio microstock Anda dengan berbagai pilihan style.",
+      icon: Palette,
+      href: "/image-engine", // URL ini yang akan kita buat selanjutnya
+      themeColor: "text-emerald-400",
+      themeBg: "bg-emerald-500/10",
+      themeBorder: "border-emerald-500/20",
+      gradientFrom: "from-emerald-400",
+      gradientTo: "to-teal-500",
+      shadowHover: "hover:shadow-emerald-500/20"
+    },
   ];
 
   return (
@@ -41,7 +54,7 @@ export default function UserDashboard() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="max-w-5xl mx-auto space-y-8 relative z-10"
+        className="max-w-7xl mx-auto space-y-8 relative z-10"
       >
         {/* Header Section (Konsisten dengan Admin) */}
         <div className="border-b border-white/5 pb-6">
@@ -49,11 +62,12 @@ export default function UserDashboard() {
             Welcome to Workspace
           </h1>
           <p className="text-muted-foreground text-lg font-medium max-w-2xl">
-            Pilih generator AI yang ingin kamu gunakan. Setiap aksi <span className="text-white font-bold">generate</span> akan memotong saldo tokenmu.
+            Pilih alat AI yang ingin kamu gunakan. Setiap aksi <span className="text-white font-bold">generate</span> akan memotong saldo tokenmu.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+        {/* Diubah menjadi md:grid-cols-3 agar memuat 3 kartu dengan presisi */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
           {tools.map((tool, index) => {
             const Icon = tool.icon;
             return (

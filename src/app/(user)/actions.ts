@@ -12,6 +12,9 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+// ------------------------------------------------------------------
+// 1. FUNGSI UNTUK GENERATOR METADATA (ADOBE / CANVA)
+// ------------------------------------------------------------------
 export async function processMetadataWithToken(formData: FormData) {
   try {
     const userId = formData.get("userId") as string;
@@ -25,7 +28,7 @@ export async function processMetadataWithToken(formData: FormData) {
 
     const config = JSON.parse(configStr);
 
-    // 1. CEK TOKEN USER (Server-Side Validation)
+    // CEK TOKEN USER (Server-Side Validation)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("token_balance")
@@ -40,11 +43,9 @@ export async function processMetadataWithToken(formData: FormData) {
       throw new Error("INSUFFICIENT_TOKENS");
     }
 
-    // 2. PROSES GEMINI API
-    // SDK @google/genai otomatis membaca process.env.GEMINI_API_KEY
+    // PROSES GEMINI API
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     
-    // Mengubah gambar menjadi base64 agar bisa dianalisis oleh Gemini Vision
     const arrayBuffer = await file.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
@@ -59,8 +60,6 @@ export async function processMetadataWithToken(formData: FormData) {
       Respond STRICTLY in JSON format with exactly these keys: "title", "keywords", "description", and "category" (number 1-21). Do not include markdown formatting like \`\`\`json.
     `;
 
-    // MENGGUNAKAN MODEL GEMINI 2.5 FLASH
-    // Kamu bisa menggantinya menjadi "gemini-2.5-pro" di sini jika dibutuhkan
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
@@ -75,21 +74,17 @@ export async function processMetadataWithToken(formData: FormData) {
     });
 
     const aiResponseText = response.text || "{}";
-    
-    // Membersihkan output dari tag markdown agar JSON valid
     const cleanJson = aiResponseText.replace(/```json/g, "").replace(/```/g, "").trim();
     const metadataResult = JSON.parse(cleanJson);
 
-    // 3. POTONG TOKEN & CATAT LOG JIKA SUKSES
+    // POTONG TOKEN & CATAT LOG
     const newTokenBalance = profile.token_balance - 1;
 
-    // Update saldo token user
     await supabaseAdmin
       .from("profiles")
       .update({ token_balance: newTokenBalance })
       .eq("id", userId);
 
-    // Catat log penggunaan untuk dilihat di Admin Dashboard
     await supabaseAdmin
       .from("tools_usage")
       .insert({
@@ -109,5 +104,114 @@ export async function processMetadataWithToken(formData: FormData) {
       return { success: false, error: err.message };
     }
     return { success: false, error: "Terjadi kesalahan internal saat memproses AI." };
+  }
+}
+
+// ------------------------------------------------------------------
+// 2. FUNGSI UNTUK GENERATOR IMAGE BATCH (FITUR BARU)
+// ------------------------------------------------------------------
+
+// Tipe data ketat untuk bagian konten Gemini (menghindari penggunaan 'any')
+type GeminiContentPart = 
+  | { text: string }
+  | { inlineData: { mimeType: string; data: string } };
+
+export async function generateImageWithToken(formData: FormData) {
+  try {
+    const userId = formData.get("userId") as string;
+    const prompt = formData.get("prompt") as string;
+    const ratio = formData.get("ratio") as string;
+    const referenceImage = formData.get("referenceImage") as string | null;
+
+    if (!userId || !prompt || !ratio) {
+      throw new Error("Data tidak lengkap untuk generasi gambar.");
+    }
+
+    // CEK TOKEN USER (Server-Side Validation)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("token_balance")
+      .eq("id", userId)
+      .single();
+
+    if (profileError || !profile) {
+      throw new Error("Gagal memverifikasi profil pengguna.");
+    }
+
+    if (profile.token_balance <= 0) {
+      throw new Error("INSUFFICIENT_TOKENS");
+    }
+
+    // PROSES GEMINI API IMAGE GENERATION
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    
+    // Menggunakan tipe data ketat yang telah didefinisikan
+    const parts: GeminiContentPart[] = [];
+
+    // Jika ada gambar referensi (Img2Img)
+    if (referenceImage) {
+      const matches = referenceImage.match(/^data:(.+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        parts.push({
+          inlineData: {
+            mimeType: matches[1],
+            data: matches[2]
+          }
+        });
+      }
+    }
+
+    // Memasukkan teks prompt
+    parts.push({ text: prompt });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image', // Model khusus image generation
+      contents: { parts },
+      config: {
+        imageConfig: { aspectRatio: ratio }
+      }
+    });
+
+    let base64Url = "";
+    const responseParts = response.candidates?.[0]?.content?.parts || [];
+    
+    for (const part of responseParts) {
+      if (part.inlineData) {
+        base64Url = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        break;
+      }
+    }
+
+    if (!base64Url) {
+      throw new Error("AI tidak mengembalikan data gambar.");
+    }
+
+    // POTONG TOKEN & CATAT LOG (1 Gambar = 1 Token)
+    const newTokenBalance = profile.token_balance - 1;
+
+    await supabaseAdmin
+      .from("profiles")
+      .update({ token_balance: newTokenBalance })
+      .eq("id", userId);
+
+    await supabaseAdmin
+      .from("tools_usage")
+      .insert({
+        user_id: userId,
+        tool_name: 'image_generator',
+        tokens_used: 1
+      });
+
+    return { 
+      success: true, 
+      imageUrl: base64Url,
+      newTokenBalance: newTokenBalance 
+    };
+
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: "Terjadi kesalahan internal saat men-generate gambar." };
   }
 }

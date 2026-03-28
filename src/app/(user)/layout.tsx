@@ -12,7 +12,8 @@ import {
   User as UserIcon,
   Loader2,
   Cpu,
-  Sparkles
+  Sparkles,
+  Palette // Ikon baru untuk Image Engine
 } from "lucide-react";
 
 type UserProfile = {
@@ -84,7 +85,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     };
   }, [router]);
 
-  // EVENT LISTENER: Mendengarkan sinyal update token dari halaman metadata
+  // EVENT LISTENER: Mendengarkan sinyal update token dari halaman metadata & image engine
   useEffect(() => {
     const handleTokenUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ newTokenBalance: number }>;
@@ -100,9 +101,11 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     router.push("/login");
   };
 
+  // MENU BARU DITAMBAHKAN DI SINI
   const menuItems = [
     { name: "Workspace", icon: LayoutDashboard, path: "/dashboard" },
     { name: "Metadata Engine", icon: Cpu, path: "/metadata" },
+    { name: "AI Image Engine", icon: Palette, path: "/image-engine" },
   ];
 
   if (loading) {
