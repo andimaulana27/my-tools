@@ -42,36 +42,39 @@ export interface GeneratedImage {
   timestamp: number;
 }
 
-// --- CONSTANTS ---
+// --- CONSTANTS YANG DIPERBARUI (MICROSTOCK READY) ---
 const TOTAL_IMAGES = 10;
 const BATCH_SIZE = 2; 
 const INTER_BATCH_DELAY_MS = 1500;
 
+// Variasi untuk aset desain umum
 const ASSET_VARIATIONS = [
-  "single isolated asset", "minimalist interpretation", "detailed version, fine lines",
-  "symmetrical layout", "dynamic diagonal view", "circular composition",
-  "vertical arrangement", "scattered small elements", "layered depth",
-  "geometric shapes", "organic fluid forms", "high-contrast monochrome",
-  "vibrant multi-color", "soft shading", "bold uniform outlines",
-  "flat fill colors", "abstract interpretation", "stylized decorative version",
-  "clean vector path", "professional stock quality"
+  "centered composition, clean minimal design", "isometric perspective, 3D illusion", "flat design with subtle drop shadow",
+  "symmetrical and balanced layout", "dynamic action angle", "circular badge style layout",
+  "vertical tall arrangement", "scattered floating elements around", "layered paper-cut depth effect",
+  "geometric abstract interpretation", "organic fluid and wavy shapes", "monochrome ink style",
+  "vibrant pop-art multi-color", "soft pastel shading", "bold thick uniform outlines",
+  "flat fill colors without outlines", "deconstructed abstract interpretation", "stylized decorative ornate version",
+  "clean vector path style", "professional editorial stock quality"
 ];
 
+// Variasi khusus untuk karakter (Pose & Ekspresi)
 const CHARACTER_VARIATIONS = [
-  "front view, neutral pose", "side profile, walking", "three-quarter view, waving",
-  "action pose, jumping", "sitting pose, relaxed", "close-up, happy expression",
-  "holding a small star", "standing, bold outline", "top-down view, playful",
-  "wearing a small hat", "holding a banner", "surprised expression",
-  "thinking pose", "sparkle effect", "greeting gesture",
-  "heart theme", "meditative pose", "tech accessory",
-  "retro outfit", "running pose"
+  "front facing view, friendly neutral pose", "side profile view, active walking pose", "three-quarter angle, energetic waving",
+  "dynamic action pose, jumping up", "relaxed sitting pose, peaceful", "close-up portrait, very happy expression",
+  "holding a generic blank sign", "standing confident, bold stance", "top-down isometric view, playful",
+  "wearing cute accessories", "pointing forward gesture", "surprised and amazed expression",
+  "thinking pose with hand on chin", "surrounded by tiny magical sparkles", "welcoming greeting gesture",
+  "holding a generic heart shape", "zen meditative yoga pose", "using generic technology device",
+  "retro aesthetic outfit", "running fast motion blur effect"
 ];
 
+// Variasi untuk pola (Pattern)
 const PATTERN_VARIATIONS = [
-  "dense intricate pattern", "sparse minimalist pattern", "geometric structured pattern",
-  "organic flowing pattern", "high-contrast monochrome pattern", "vibrant multi-color pattern",
-  "subtle background pattern", "bold large-scale pattern", "diagonal repeating pattern",
-  "kaleidoscopic radial pattern"
+  "dense intricate repeatable pattern", "sparse minimalist scattered pattern", "geometric grid structured pattern",
+  "organic flowing seamless pattern", "high-contrast monochrome repeatable pattern", "vibrant colorful repeating pattern",
+  "subtle soft background pattern", "bold large-scale motif pattern", "diagonal repeating structured pattern",
+  "kaleidoscopic radial mandala pattern"
 ];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -159,19 +162,20 @@ export default function ImageEnginePage() {
 
         try {
             const variation = variationList[index % variationList.length];
-            const refinedPrompt = prompt.toLowerCase().includes("buat foto") 
-              ? prompt.replace(/buat foto/gi, "").trim() 
-              : prompt;
+            const refinedPrompt = prompt.toLowerCase().replace(/buat foto|buatkan gambar/gi, "").trim();
 
-            const finalPrompt = style === DesignStyle.SEAMLESS_PATTERN
-              ? `Seamless vector pattern of ${refinedPrompt || style}, ${variation}. No text.`
-              : style === DesignStyle.SILHOUETTE
-              ? `Single solid silhouette of ${refinedPrompt || style}, ${variation}. Isolated on white, no text.`
-              : `Single isolated vector asset of ${refinedPrompt || style}, ${variation}. Isolated on white, no text.`;
+            let finalPrompt = "";
+            if (style === DesignStyle.SEAMLESS_PATTERN) {
+                finalPrompt = `A seamless vector pattern design of ${refinedPrompt || style}. Art Style: ${style}. Variation detail: ${variation}. It must be perfectly tileable.`;
+            } else if (style === DesignStyle.SILHOUETTE) {
+                finalPrompt = `A single solid black silhouette illustration of ${refinedPrompt || style}. Art Style: ${style}. Variation detail: ${variation}. High contrast.`;
+            } else {
+                finalPrompt = `A single isolated illustration of ${refinedPrompt || style}. Art Style: ${style}. Variation detail: ${variation}.`;
+            }
 
             const formData = new FormData();
             formData.append("userId", userId);
-            formData.append("prompt", finalPrompt + `\nSTYLE: ${style}`);
+            formData.append("prompt", finalPrompt);
             formData.append("ratio", ratio);
             if (referenceImage) formData.append("referenceImage", referenceImage);
 
@@ -198,7 +202,6 @@ export default function ImageEnginePage() {
               throw new Error(result.error || "Gagal menghasilkan gambar.");
             }
         } catch (err: unknown) {
-            // Perbaikan Strict Type Checking untuk Error
             const errorMessage = err instanceof Error ? err.message : "Terjadi kesalahan tidak dikenal";
             console.error(`Failed to generate image ${index + 1}`, errorMessage);
             setError("Gagal memproses beberapa gambar. Pastikan kuota cukup atau coba lagi.");
@@ -260,8 +263,8 @@ export default function ImageEnginePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* KOLOM KIRI: KONFIGURASI */}
-        <div className="lg:col-span-4 bg-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-[0_8px_30px_rgba(0,0,0,0.2)] relative overflow-hidden flex flex-col h-[700px]">
+        {/* KOLOM KIRI: KONFIGURASI (SUDAH DIPERBARUI AGAR TIDAK SCROLL) */}
+        <div className="lg:col-span-4 bg-card/60 backdrop-blur-xl border border-white/10 rounded-3xl p-7 shadow-[0_8px_30px_rgba(0,0,0,0.2)] relative overflow-hidden flex flex-col h-fit">
           <div className="flex items-center justify-between border-b border-white/10 pb-5 mb-6 shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 shadow-inner">
@@ -271,16 +274,17 @@ export default function ImageEnginePage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-6">
+          <div className="space-y-6">
             <div className="space-y-3">
               <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><Palette size={14}/> Style Library</label>
-              <div className="space-y-2">
+              {/* Diubah menjadi flex-wrap agar membentuk desain "Chips/Pills" yang rapi */}
+              <div className="flex flex-wrap gap-2">
                 {Object.values(DesignStyle).map((ds) => (
                   <button
                     key={ds}
                     onClick={() => setStyle(ds)}
                     disabled={isGenerating}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
+                    className={`flex-grow text-center px-3 py-2 rounded-xl text-[11px] font-bold transition-all border ${
                       style === ds
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                         : 'bg-black/40 text-gray-400 border-white/10 hover:border-white/30 hover:text-white'
@@ -294,11 +298,12 @@ export default function ImageEnginePage() {
 
             <div className="space-y-3 pt-4 border-t border-white/10">
               <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><Maximize2 size={14}/> Aspect Ratio</label>
-              <div className="grid grid-cols-2 gap-2">
+              {/* Diubah menjadi grid 4 kolom agar memanjang ke samping (hanya makan 1 baris) */}
+              <div className="grid grid-cols-4 gap-2">
                 {Object.values(AspectRatio).map((r) => (
                   <button
                     key={r} onClick={() => setRatio(r)} disabled={isGenerating}
-                    className={`px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all border ${
+                    className={`px-2 py-2 rounded-lg text-[11px] font-mono font-bold transition-all border text-center ${
                       ratio === r ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50' : 'bg-black/40 text-gray-400 border-white/10 hover:border-white/30 hover:text-white'
                     }`}
                   >
@@ -310,11 +315,12 @@ export default function ImageEnginePage() {
 
             <div className="space-y-3 pt-4 border-t border-white/10">
                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2"><ImageIcon size={14}/> Reference DNA (Opsional)</label>
+               {/* Dikurangi tingginya sedikit menjadi h-28 agar muat sempurna tanpa scroll */}
                <div 
                   onClick={() => !isGenerating && fileInputRef.current?.click()}
                   onDrop={handleDrop}
                   onDragOver={(e)=>e.preventDefault()}
-                  className={`relative w-full aspect-video rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-emerald-500/40 hover:bg-emerald-500/5 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''} ${referenceImage ? 'border-emerald-500/50' : ''}`}
+                  className={`relative w-full h-28 rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer transition-all hover:border-emerald-500/40 hover:bg-emerald-500/5 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''} ${referenceImage ? 'border-emerald-500/50' : ''}`}
                 >
                   {referenceImage ? (
                     <>
@@ -323,7 +329,7 @@ export default function ImageEnginePage() {
                     </>
                   ) : (
                     <div className="text-center">
-                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-2"><Upload size={18} className="text-white/40" /></div>
+                      <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center mx-auto mb-2"><Upload size={16} className="text-white/40" /></div>
                       <div className="text-[10px] font-bold text-gray-400 uppercase">Upload Reference</div>
                     </div>
                   )}
