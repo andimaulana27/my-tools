@@ -2,17 +2,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
-import { createNewUser, deleteAuthUser, updateUserPassword } from "../actions";
+import { createNewUser, deleteAuthUser, updateUserPassword, getAdminUsersData, updateUserToken } from "../actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, X, Loader2, Coins, Search, User, Activity, ChevronLeft, ChevronRight, Lock } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Loader2, Coins, Search, User, Activity, ChevronLeft, ChevronRight, Lock, ShieldAlert } from "lucide-react";
 
+// Tipe Data Eksplisit untuk mengatasi error "Unexpected any"
 type Profile = {
   id: string;
   username: string;
+  role: string;
   token_balance: number;
   created_at: string;
   total_used?: number; 
+};
+
+type UsageRecord = {
+  user_id: string;
+  tokens_used: number;
 };
 
 export default function UsersManagementPage() {
@@ -20,7 +26,6 @@ export default function UsersManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // State Paginasi
   const [currentPage, setCurrentPage] = useState(1);
   const USERS_PER_PAGE = 25;
 
@@ -30,35 +35,23 @@ export default function UsersManagementPage() {
   const [newTokens, setNewTokens] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // State Modal Edit Token
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [editTokens, setEditTokens] = useState(0);
 
-  // State Modal Reset Password
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPasswordForReset, setNewPasswordForReset] = useState("");
 
+  // Menggunakan Server Action untuk bypass RLS dengan tipe data yang ketat
   const refreshUsers = async () => {
     setLoading(true);
+    const result = await getAdminUsersData();
     
-    // 1. Ambil data profil
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("role", "user")
-      .order("created_at", { ascending: false });
-
-    // 2. Ambil data pemakaian (usage)
-    const { data: usageData } = await supabase
-      .from("tools_usage")
-      .select("user_id, tokens_used");
-
-    if (!profilesError && profiles) {
-      const enrichedUsers = profiles.map(user => {
-        const totalUsed = usageData
-          ?.filter(usage => usage.user_id === user.id)
-          .reduce((sum, current) => sum + current.tokens_used, 0) || 0;
+    if (result.success && result.profiles) {
+      const enrichedUsers = (result.profiles as Profile[]).map((user: Profile) => {
+        const totalUsed = (result.usageData as UsageRecord[])
+          ?.filter((usage: UsageRecord) => usage.user_id === user.id)
+          .reduce((sum: number, current: UsageRecord) => sum + current.tokens_used, 0) || 0;
           
         return {
           ...user,
@@ -66,6 +59,8 @@ export default function UsersManagementPage() {
         };
       });
       setUsers(enrichedUsers);
+    } else {
+      console.error("Gagal load users:", result.error);
     }
     setLoading(false);
   };
@@ -73,22 +68,13 @@ export default function UsersManagementPage() {
   useEffect(() => {
     let isMounted = true;
     const loadInitialUsers = async () => {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "user")
-        .order("created_at", { ascending: false });
-
-      const { data: usageData } = await supabase
-        .from("tools_usage")
-        .select("user_id, tokens_used");
-
+      const result = await getAdminUsersData();
       if (isMounted) {
-        if (!profilesError && profiles) {
-          const enrichedUsers = profiles.map(user => {
-            const totalUsed = usageData
-              ?.filter(usage => usage.user_id === user.id)
-              .reduce((sum, current) => sum + current.tokens_used, 0) || 0;
+        if (result.success && result.profiles) {
+          const enrichedUsers = (result.profiles as Profile[]).map((user: Profile) => {
+            const totalUsed = (result.usageData as UsageRecord[])
+              ?.filter((usage: UsageRecord) => usage.user_id === user.id)
+              .reduce((sum: number, current: UsageRecord) => sum + current.tokens_used, 0) || 0;
               
             return {
               ...user,
@@ -126,13 +112,10 @@ export default function UsersManagementPage() {
     if (!selectedUser) return;
     setIsSubmitting(true);
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ token_balance: editTokens })
-      .eq("id", selectedUser.id);
+    const result = await updateUserToken(selectedUser.id, editTokens);
 
-    if (error) {
-      alert(`Gagal update token: ${error.message}`);
+    if (!result.success) {
+      alert(`Gagal update token: ${result.error}`);
     } else {
       setIsEditModalOpen(false);
       setSelectedUser(null);
@@ -172,7 +155,6 @@ export default function UsersManagementPage() {
     }
   };
 
-  // Logika Filter & Paginasi
   const filteredUsers = users.filter((user) =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -182,7 +164,6 @@ export default function UsersManagementPage() {
   const indexOfFirstUser = indexOfLastUser - USERS_PER_PAGE;
   const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
 
-  // Men-generate array nomor halaman untuk navigasi
   const pageNumbers = [];
   for (let i = 1; i <= totalPages; i++) {
     pageNumbers.push(i);
@@ -190,8 +171,6 @@ export default function UsersManagementPage() {
 
   return (
     <div className="relative min-h-full">
-      
-      {/* BACKGROUND MODERN DASHBOARD: Faint Dot Pattern */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.15]" />
         <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_60%_60%_at_50%_30%,transparent_20%,#000_100%)]" />
@@ -203,7 +182,6 @@ export default function UsersManagementPage() {
         transition={{ duration: 0.4 }}
         className="relative z-10 space-y-8 max-w-7xl mx-auto"
       >
-        {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-white/5 pb-6">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight flex items-center gap-3">
@@ -211,19 +189,18 @@ export default function UsersManagementPage() {
             </h1>
             <p className="text-muted-foreground mt-2 text-lg font-medium">Kelola akses, sandi, dan pantau aktivitas token pengguna secara efisien.</p>
           </div>
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="group bg-white text-black px-6 py-3.5 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95"
-          >
-            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-            Add New User
-          </button>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="group bg-white text-black px-6 py-3.5 rounded-2xl font-bold hover:bg-gray-200 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95 flex-1 sm:flex-none justify-center"
+            >
+              <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
+              Add New User
+            </button>
+          </div>
         </div>
 
-        {/* Table Container (Glassmorphism) */}
         <div className="bg-card/60 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-          
-          {/* Top Bar (Search) */}
           <div className="p-6 border-b border-white/10 flex items-center gap-3 bg-white/5">
             <div className="relative flex-1 max-w-md group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-white transition-colors" />
@@ -233,19 +210,17 @@ export default function UsersManagementPage() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset halaman ke 1 setiap kali mencari
+                  setCurrentPage(1); 
                 }}
                 className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-sm text-foreground focus:outline-none focus:border-white/30 focus:bg-black/60 focus:ring-1 focus:ring-white/20 transition-all shadow-inner"
               />
             </div>
-            {/* Badge Indicator */}
             <div className="hidden md:flex ml-auto items-center gap-2 bg-black/40 border border-white/10 px-4 py-2 rounded-xl shadow-inner">
               <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{filteredUsers.length} Users Found</span>
+              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{filteredUsers.length} Accounts Found</span>
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
               <thead className="bg-black/40 border-b border-white/10 text-gray-400 font-bold uppercase tracking-widest text-[11px]">
@@ -279,12 +254,18 @@ export default function UsersManagementPage() {
                     <tr key={user.id} className="hover:bg-white/5 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
-                          <div className="p-2.5 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-xl border border-blue-500/20 shadow-inner group-hover:scale-110 transition-transform">
-                            <User className="w-4 h-4 text-blue-400" />
+                          <div className={`p-2.5 rounded-xl border shadow-inner group-hover:scale-110 transition-transform ${user.role === 'admin' ? 'bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/20' : 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20'}`}>
+                            {user.role === 'admin' ? <ShieldAlert className="w-4 h-4 text-red-400" /> : <User className="w-4 h-4 text-blue-400" />}
                           </div>
                           <div>
-                            <span className="font-bold text-white text-base block">@{user.username}</span>
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">ID: {user.id.substring(0,8)}...</span>
+                            {/* Tailwind conflict "block flex" diperbaiki di sini menjadi "flex" saja */}
+                            <span className="font-bold text-white text-base flex items-center gap-2">
+                              @{user.username}
+                              {user.role === 'admin' && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-500 text-white uppercase tracking-wider">ADMIN</span>
+                              )}
+                            </span>
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">ID: {user.id.substring(0,8)}... • ROLE: {user.role || 'USER'}</span>
                           </div>
                         </div>
                       </td>
@@ -345,7 +326,6 @@ export default function UsersManagementPage() {
             </table>
           </div>
           
-          {/* Kontrol Paginasi */}
           {totalPages > 1 && (
             <div className="p-4 border-t border-white/10 bg-black/20 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-400">

@@ -17,8 +17,6 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
 export async function createNewUser(username: string, password: string, tokens: number) {
   try {
     const email = `${username}@metadata.local`;
-
-    // Menggunakan auth.admin.createUser agar tidak mengganggu sesi login Admin yang sedang aktif
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
@@ -30,61 +28,78 @@ export async function createNewUser(username: string, password: string, tokens: 
       },
     });
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
+    if (error) return { success: false, error: error.message };
     return { success: true, data };
   } catch (err: unknown) {
-    if (err instanceof Error) {
-      return { success: false, error: err.message };
-    }
-    return { success: false, error: "Terjadi kesalahan sistem yang tidak diketahui." };
+    return { success: false, error: err instanceof Error ? err.message : "Terjadi kesalahan sistem." };
   }
 }
 
 export async function deleteAuthUser(userId: string) {
   try {
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: unknown) {
-    if (err instanceof Error) {
-      return { success: false, error: err.message };
-    }
-    return { success: false, error: "Terjadi kesalahan sistem yang tidak diketahui." };
+    return { success: false, error: err instanceof Error ? err.message : "Terjadi kesalahan sistem." };
   }
 }
 
-// FUNGSI BARU: Reset Password oleh Admin tanpa memerlukan sandi lama
 export async function updateUserPassword(userId: string, newPassword: string) {
   try {
-    // HAPUS 'data,' dari sini, cukup ambil 'error'
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
       password: newPassword,
     });
-    
-    if (error) {
-      return { success: false, error: error.message };
-    }
-    
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: unknown) {
-    if (err instanceof Error) {
-      return { success: false, error: err.message };
-    }
-    return { success: false, error: "Terjadi kesalahan sistem yang tidak diketahui." };
+    return { success: false, error: err instanceof Error ? err.message : "Terjadi kesalahan sistem." };
   }
 }
 
-// Cek status sistem dan environment variable (berjalan aman di server)
 export async function getSystemStatus() {
   return {
     geminiConfigured: !!process.env.GEMINI_API_KEY,
     nodeEnv: process.env.NODE_ENV || "development",
   };
+}
+
+// FUNGSI BARU 1: Ambil semua data user menembus RLS
+export async function getAdminUsersData() {
+  try {
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    const { data: usageData, error: usageError } = await supabaseAdmin
+      .from("tools_usage")
+      .select("user_id, tokens_used");
+
+    if (profilesError) return { success: false, error: profilesError.message };
+    
+    // PERBAIKAN ERROR ESLINT: Memanfaatkan usageError untuk log di sisi server
+    if (usageError) {
+      console.error("Gagal mengambil data tools_usage di admin panel:", usageError.message);
+    }
+
+    return { success: true, profiles: profiles || [], usageData: usageData || [] };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal mengambil data." };
+  }
+}
+
+// FUNGSI BARU 2: Update token menembus RLS
+export async function updateUserToken(userId: string, newBalance: number) {
+  try {
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ token_balance: newBalance })
+      .eq("id", userId);
+
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal update token." };
+  }
 }
