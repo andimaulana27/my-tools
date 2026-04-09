@@ -1,7 +1,7 @@
 import requests
 
 # Ganti dengan GEMINI_API_KEY Anda
-API_KEY = "AIzaSyDwcVRq_E-mc6S45Leza0AEDDORrWLrpxM"
+API_KEY = "AI...."
 
 def cek_model_tersedia():
     print("Sedang mengambil daftar model dari Google AI Studio (v1beta)...")
