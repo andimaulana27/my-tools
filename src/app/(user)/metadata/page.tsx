@@ -29,7 +29,7 @@ export default function UnifiedMetadataGenerator() {
     keywordsCount: 49,
     conceptContext: "",
     negativeKeywords: "logo, watermark, text",
-    delay: 3000, 
+    delay: 6000, 
   });
 
   const [files, setFiles] = useState<ProcessedFile[]>([]);

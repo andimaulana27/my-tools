@@ -45,7 +45,7 @@ export interface GeneratedImage {
 // --- CONSTANTS YANG DIPERBARUI (MICROSTOCK READY) ---
 const TOTAL_IMAGES = 10;
 const BATCH_SIZE = 2; 
-const INTER_BATCH_DELAY_MS = 1500;
+const INTER_BATCH_DELAY_MS = 5000;
 
 // Variasi untuk aset desain umum
 const ASSET_VARIATIONS = [
