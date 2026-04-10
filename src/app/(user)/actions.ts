@@ -116,7 +116,18 @@ export async function processMetadataWithToken(formData: FormData) {
       throw new Error(`Semua server model AI sedang sibuk. Terakhir: ${lastErrorMessage}`);
     }
 
-    const cleanJson = aiResponseText.replace(/```json/g, "").replace(/```/g, "").trim();
+    // PERBAIKAN ERROR JSON.PARSE: Ekstraksi agresif khusus untuk memotong string di antara { dan }
+    let cleanJson = aiResponseText;
+    const startIndex = cleanJson.indexOf('{');
+    const endIndex = cleanJson.lastIndexOf('}');
+
+    if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
+      cleanJson = cleanJson.substring(startIndex, endIndex + 1);
+    } else {
+      // Fallback jika anehnya AI tidak mengembalikan kurung kurawal (sangat jarang jika output JSON)
+      cleanJson = cleanJson.replace(/```json/gi, "").replace(/```/g, "").trim();
+    }
+
     const metadataResult = JSON.parse(cleanJson);
     
     // Pastikan kategori adalah number untuk Adobe Stock
