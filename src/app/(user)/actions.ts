@@ -40,6 +40,7 @@ export async function processMetadataWithToken(formData: FormData) {
     const arrayBuffer = await file.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
+    // PERBAIKAN: Menyuntikkan kamus kategori Adobe Stock agar AI tidak menebak buta
     const promptText = `
       Analyze this image and generate metadata for a microstock marketplace (${mode}).
       Requirements:
@@ -48,7 +49,30 @@ export async function processMetadataWithToken(formData: FormData) {
       - Concept Context: ${config.conceptContext || 'None'}
       - Negative Keywords to avoid: ${config.negativeKeywords}
       
-      Respond STRICTLY in JSON format with exactly these keys: "title", "keywords", "description", and "category" (number 1-21). Do not include markdown formatting like \`\`\`json.
+      If the mode is "adobe", you MUST strictly analyze the image and assign the most accurate category numeric code based on this exact Adobe Stock mapping:
+      1: Animals
+      2: Buildings and Architecture
+      3: Business
+      4: Drinks
+      5: The Environment
+      6: States of Mind
+      7: Food
+      8: Graphic Resources (Use this for general illustrations, vectors, UI elements, backgrounds)
+      9: Hobbies and Leisure
+      10: Industry
+      11: Landscapes
+      12: Lifestyle
+      13: People
+      14: Plants and Flowers
+      15: Culture and Religion
+      16: Science
+      17: Social Issues
+      18: Sports
+      19: Technology
+      20: Transport
+      21: Travel
+      
+      Respond STRICTLY in JSON format with exactly these keys: "title", "keywords", "description", and "category" (as an integer). Do not include markdown formatting like \`\`\`json.
     `;
 
     // FITUR AUTO-FALLBACK MODELS UNTUK METADATA
@@ -94,6 +118,11 @@ export async function processMetadataWithToken(formData: FormData) {
 
     const cleanJson = aiResponseText.replace(/```json/g, "").replace(/```/g, "").trim();
     const metadataResult = JSON.parse(cleanJson);
+    
+    // Pastikan kategori adalah number untuk Adobe Stock
+    if (metadataResult.category && typeof metadataResult.category === 'string') {
+        metadataResult.category = parseInt(metadataResult.category, 10) || 8;
+    }
     
     // POTONG TOKEN & CATAT LOG
     const newTokenBalance = profile.token_balance - 1;
@@ -179,9 +208,9 @@ export async function generateImageWithToken(formData: FormData) {
     // HYBRID FALLBACK: Kombinasi mesin Generasi Baru (Gemini) dan Mesin Klasik (Imagen)
     const imageModelsToTry = [
       "gemini-3-pro-image-preview",
-      "gemini-2.5-flash-image",       // UTAMA: Mesin gambar generasi terbaru (Nano Banana), super kilat!
-      "imagen-4.0-generate-001",      // CADANGAN 1: Imagen 4 Standard
-      "imagen-4.0-fast-generate-001"  // CADANGAN 2: Imagen 4 Fast
+      "gemini-2.5-flash-image",       
+      "imagen-4.0-generate-001",      
+      "imagen-4.0-fast-generate-001"  
     ];
 
     let imageBytes: string | null | undefined = null;
@@ -191,23 +220,19 @@ export async function generateImageWithToken(formData: FormData) {
     for (const imageModel of imageModelsToTry) {
         try {
             if (imageModel.startsWith("gemini")) {
-                // LALUAN 1: Gemini 2.5 Flash Image menggunakan fungsi generateContent (Multimodal)
                 const response = await ai.models.generateContent({
                     model: imageModel, 
-                    // Sisipkan rasio ke dalam prompt karena fungsi chat tidak punya parameter rasio bawaan
                     contents: finalMasterPrompt + `\n(IMPORTANT: Render this image in a ${ratio} aspect ratio format.)`, 
                     config: {
-                        responseModalities: ["IMAGE"], // Memaksa AI menjawab dengan Gambar, bukan Teks
+                        responseModalities: ["IMAGE"],
                     }
                 });
                 
-                // Menggali struktur JSON untuk menemukan data base64 gambar
                 const parts = response.candidates?.[0]?.content?.parts;
                 const imagePart = parts?.find(p => p.inlineData !== undefined);
                 imageBytes = imagePart?.inlineData?.data;
                 
             } else {
-                // LALUAN 2: Imagen 4 menggunakan fungsi standar generateImages
                 const response = await ai.models.generateImages({
                     model: imageModel, 
                     prompt: finalMasterPrompt,
@@ -225,12 +250,11 @@ export async function generateImageWithToken(formData: FormData) {
             }
 
             isSuccess = true;
-            break; // Jika berhasil, hentikan loop dan jangan coba model cadangan
+            break; 
         } catch (e: unknown) {
             const errorMessage = e instanceof Error ? e.message : String(e);
             console.warn(`Model Gambar ${imageModel} gagal:`, errorMessage);
             lastErrorMessage = errorMessage;
-            // Loop otomatis berlanjut mencoba model berikutnya
         }
     }
 
@@ -258,7 +282,7 @@ export async function generateImageWithToken(formData: FormData) {
 
     return { success: true, imageUrl: base64Url, newTokenBalance };
 
-  } catch (err: unknown) { // Strict Typing
+  } catch (err: unknown) { 
     console.error("Gambar API Error:", err);
     return { success: false, error: err instanceof Error ? err.message : "Terjadi kesalahan internal men-generate gambar." };
   }

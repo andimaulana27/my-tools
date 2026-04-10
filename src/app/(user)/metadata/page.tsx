@@ -10,6 +10,7 @@ import { processMetadataWithToken } from "../actions";
 type ProcessedFile = {
   id: string;
   file: File;
+  originalFileName: string; // Menyimpan nama file mentah/asli (contoh: .svg / .eps)
   previewUrl: string;
   status: "pending" | "processing" | "success" | "error";
   metadata?: { title: string; keywords: string; description: string; category?: number };
@@ -17,6 +18,15 @@ type ProcessedFile = {
 };
 
 type AppMode = "adobe" | "canva";
+
+// Mapping kategori Adobe Stock untuk ditampilkan di UI
+const ADOBE_CATEGORIES: Record<number, string> = {
+  1: "Animals", 2: "Buildings and Architecture", 3: "Business", 4: "Drinks",
+  5: "The Environment", 6: "States of Mind", 7: "Food", 8: "Graphic Resources",
+  9: "Hobbies and Leisure", 10: "Industry", 11: "Landscapes", 12: "Lifestyle",
+  13: "People", 14: "Plants and Flowers", 15: "Culture and Religion", 16: "Science",
+  17: "Social Issues", 18: "Sports", 19: "Technology", 20: "Transport", 21: "Travel"
+};
 
 export default function UnifiedMetadataGenerator() {
   const [mode, setMode] = useState<AppMode>("adobe");
@@ -29,7 +39,7 @@ export default function UnifiedMetadataGenerator() {
     keywordsCount: 49,
     conceptContext: "",
     negativeKeywords: "logo, watermark, text",
-    delay: 6000, 
+    delay: 4000, 
   });
 
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -129,7 +139,8 @@ export default function UnifiedMetadataGenerator() {
 
       return {
         id: Math.random().toString(36).substring(7),
-        file: processedFile,
+        file: processedFile, // File fisik yang mungkin sudah jadi PNG untuk AI
+        originalFileName: file.name, // NAMA FILE ASLI (contoh: asset.svg) untuk diekspor ke CSV
         previewUrl: URL.createObjectURL(processedFile),
         status: "pending",
       };
@@ -183,7 +194,6 @@ export default function UnifiedMetadataGenerator() {
         currentBalance = result.newTokenBalance ?? currentBalance;
         setTokenBalance(currentBalance); 
 
-        // MENGIRIM SINYAL UPDATE KE SIDEBAR (LAYOUT)
         window.dispatchEvent(new CustomEvent('tokenBalanceUpdated', { 
           detail: { newTokenBalance: currentBalance } 
         }));
@@ -219,9 +229,10 @@ export default function UnifiedMetadataGenerator() {
     const escape = (str: string) => `"${(str || '').replace(/"/g, '""')}"`;
 
     if (mode === "adobe") {
+      // Sesuai aturan gambar: Filename, Title, Keywords, Category, Releases
       const headers = ['Filename', 'Title', 'Keywords', 'Category', 'Releases'];
       const rows = successFiles.map(f => [
-        escape(f.file.name),
+        escape(f.originalFileName), // MENGGUNAKAN NAMA FILE ASLI (.svg / .eps)
         escape(f.metadata?.title || ''),
         escape(f.metadata?.keywords || ''),
         f.metadata?.category || 8, 
@@ -235,7 +246,7 @@ export default function UnifiedMetadataGenerator() {
         const limitedKeywords = keywordsArray.slice(0, 20).join(', ');
         
         return [
-          escape(f.file.name),
+          escape(f.originalFileName), // MENGGUNAKAN NAMA FILE ASLI (.svg / .eps)
           escape(f.metadata?.title || ''),
           escape(limitedKeywords),
           escape(artistName || ''), 
@@ -246,12 +257,13 @@ export default function UnifiedMetadataGenerator() {
       csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     }
 
-    const firstFileName = successFiles[0].file.name.replace(/\.[^/.]+$/, "");
+    const firstFileName = successFiles[0].originalFileName.replace(/\.[^/.]+$/, "");
     const downloadName = successFiles.length === 1 
       ? `${firstFileName}_${mode}.csv`
       : `batch_metadata_${mode}.csv`;
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // UTF-8 BOM (\uFEFF) agar terbaca sempurna di Adobe Stock Portal / Excel
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
@@ -507,9 +519,10 @@ export default function UnifiedMetadataGenerator() {
                       </div>
                       {isAdobe && file.metadata.category && (
                         <div>
-                          <span className={`text-[10px] font-black ${theme.color} uppercase tracking-widest block mb-1.5`}>AI Category Suggestion</span>
+                          <span className={`text-[10px] font-black ${theme.color} uppercase tracking-widest block mb-1.5`}>AI Category Match</span>
                           <span className="text-xs font-bold bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-white shadow-inner flex w-fit items-center gap-2">
-                            <Layers className="w-3 h-3" /> Category ID: {file.metadata.category}
+                            <Layers className="w-3 h-3" /> 
+                            {ADOBE_CATEGORIES[file.metadata.category] || "Graphic Resources"} (ID: {file.metadata.category})
                           </span>
                         </div>
                       )}
