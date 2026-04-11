@@ -39,7 +39,7 @@ export default function UnifiedMetadataGenerator() {
     keywordsCount: 49,
     conceptContext: "",
     negativeKeywords: "logo, watermark, text",
-    delay: 4000, 
+    delay: 1000, // DEFAULT DIUBAH KE 1000ms (1 Detik) UNTUK API TIER 1
   });
 
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -108,10 +108,14 @@ export default function UnifiedMetadataGenerator() {
               canvas.width = img.width > 0 ? img.width : 1024;
               canvas.height = img.height > 0 ? img.height : 1024;
               const ctx = canvas.getContext('2d');
+              
               if (ctx) {
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // --- PERBAIKAN DI SINI ---
+                // Kita gunakan clearRect untuk memastikan canvas benar-benar transparan
+                // tanpa menambahkan warna putih (fillStyle #FFFFFF)
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
                 ctx.drawImage(img, 0, 0);
+                // -------------------------
                 
                 canvas.toBlob((blob) => {
                   if (blob) {
@@ -121,7 +125,7 @@ export default function UnifiedMetadataGenerator() {
                     resolve(file); 
                   }
                   URL.revokeObjectURL(url);
-                }, 'image/png', 1.0);
+                }, 'image/png', 1.0); // Tetap gunakan image/png agar mendukung transparansi
               } else {
                 resolve(file);
               }
@@ -139,8 +143,8 @@ export default function UnifiedMetadataGenerator() {
 
       return {
         id: Math.random().toString(36).substring(7),
-        file: processedFile, // File fisik yang mungkin sudah jadi PNG untuk AI
-        originalFileName: file.name, // NAMA FILE ASLI (contoh: asset.svg) untuk diekspor ke CSV
+        file: processedFile,
+        originalFileName: file.name,
         previewUrl: URL.createObjectURL(processedFile),
         status: "pending",
       };
@@ -257,10 +261,20 @@ export default function UnifiedMetadataGenerator() {
       csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     }
 
-    const firstFileName = successFiles[0].originalFileName.replace(/\.[^/.]+$/, "");
-    const downloadName = successFiles.length === 1 
-      ? `${firstFileName}_${mode}.csv`
-      : `batch_metadata_${mode}.csv`;
+    // --- LOGIKA UPDATE PENAMAAN FILE EXPORT ---
+    // Mengambil nama file pertama tanpa ekstensi
+    const rawFirstName = successFiles[0].originalFileName.replace(/\.[^/.]+$/, "");
+    
+    // Membersihkan penomoran di akhir file (seperti -01, _02, 03, (1), dll) 
+    // agar bisa mewakili nama batch/set
+    let baseName = rawFirstName.replace(/[-_\s]*\d+$/, '').replace(/\(\d+\)$/, '').trim();
+    
+    // Fallback: Jika setelah dibersihkan namanya malah kosong (misal file aslinya cuma "1.svg"), 
+    // gunakan nama aslinya atau default "batch_metadata"
+    if (!baseName) baseName = rawFirstName || "batch_metadata";
+
+    const downloadName = `${baseName}_${mode}.csv`;
+    // -----------------------------------------
 
     // UTF-8 BOM (\uFEFF) agar terbaca sempurna di Adobe Stock Portal / Excel
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -386,6 +400,24 @@ export default function UnifiedMetadataGenerator() {
               <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1">Negative Terms</label>
               <textarea value={config.negativeKeywords} onChange={e => setConfig({...config, negativeKeywords: e.target.value})} className={`w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-medium text-white h-20 resize-none focus:outline-none focus:bg-black/60 focus:ring-1 transition-all leading-relaxed shadow-inner ${theme.borderActive}`} />
             </div>
+
+            {/* INPUT BARU UNTUK MENGATUR DELAY API */}
+            <div className="space-y-2 pt-4 border-t border-white/5">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">API Batch Delay (ms)</label>
+              <input 
+                type="number" 
+                step="100"
+                min="0"
+                value={config.delay} 
+                onChange={e => setConfig({...config, delay: Number(e.target.value)})} 
+                className={`w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-white focus:outline-none focus:bg-black/60 focus:ring-1 transition-all shadow-inner ${theme.borderActive}`} 
+              />
+              <p className="text-[10px] text-gray-500 font-medium ml-1 leading-relaxed">
+                Default: 1000ms. Karena menggunakan Tier 1 API (Pay-as-you-go), Anda dapat menguranginya menjadi 500ms agar proses generate elemen jauh lebih cepat.
+              </p>
+            </div>
+            {/* -------------------------------------- */}
+
           </div>
         </div>
 

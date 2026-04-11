@@ -14,7 +14,8 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
-export async function createNewUser(username: string, password: string, tokens: number) {
+// UPDATE: Tambahkan parameter role (default: "user")
+export async function createNewUser(username: string, password: string, tokens: number, role: string = "user") {
   try {
     const email = `${username}@metadata.local`;
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -24,7 +25,7 @@ export async function createNewUser(username: string, password: string, tokens: 
       user_metadata: {
         username: username,
         token_balance: tokens,
-        role: "user",
+        role: role, // Role disuntikkan di sini
       },
     });
 
@@ -64,7 +65,6 @@ export async function getSystemStatus() {
   };
 }
 
-// FUNGSI BARU 1: Ambil semua data user menembus RLS
 export async function getAdminUsersData() {
   try {
     const { data: profiles, error: profilesError } = await supabaseAdmin
@@ -78,7 +78,6 @@ export async function getAdminUsersData() {
 
     if (profilesError) return { success: false, error: profilesError.message };
     
-    // PERBAIKAN ERROR ESLINT: Memanfaatkan usageError untuk log di sisi server
     if (usageError) {
       console.error("Gagal mengambil data tools_usage di admin panel:", usageError.message);
     }
@@ -89,7 +88,6 @@ export async function getAdminUsersData() {
   }
 }
 
-// FUNGSI BARU 2: Update token menembus RLS
 export async function updateUserToken(userId: string, newBalance: number) {
   try {
     const { error } = await supabaseAdmin

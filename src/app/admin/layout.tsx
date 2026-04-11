@@ -4,10 +4,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Users, Settings, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Users, Settings, LogOut, ShieldCheck, MonitorPlay } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-// KOMPONEN SENTER TERPISAH (Agar tidak me-render ulang seluruh layout & children)
 const InteractiveSpotlight = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
@@ -38,6 +37,22 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchUserRole = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        const { data } = await supabase.from("profiles").select("role").eq("id", authData.user.id).single();
+        if (isMounted && data) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    fetchUserRole();
+    return () => { isMounted = false; };
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -51,10 +66,8 @@ export default function AdminLayout({
   ];
 
   return (
-    // PERBAIKAN: Menggunakan h-screen agar layout terkunci sebesar layar, mencegah sidebar ikut tertarik ke bawah
     <div className="h-screen bg-background flex relative overflow-hidden antialiased">
       
-      {/* BACKGROUND MODERN DASHBOARD GLOBAL: Faint Dot Pattern */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.15]" />
         <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,transparent_20%,#000_100%)]" />
@@ -62,7 +75,6 @@ export default function AdminLayout({
 
       <InteractiveSpotlight />
 
-      {/* Sidebar untuk Desktop (Glassmorphism Premium) */}
       <aside className="w-[280px] h-full bg-card/40 backdrop-blur-2xl border-r border-white/10 hidden md:flex flex-col relative z-20 shadow-[8px_0_30px_rgba(0,0,0,0.5)]">
         
         <div className="p-7 border-b border-white/10 flex items-center gap-4 relative overflow-hidden group">
@@ -82,7 +94,6 @@ export default function AdminLayout({
           </div>
         </div>
 
-        {/* Navigasi Utama */}
         <nav className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
           {menuItems.map((item) => {
             const isActive = pathname.startsWith(item.path);
@@ -107,8 +118,17 @@ export default function AdminLayout({
           })}
         </nav>
 
-        {/* Footer Sidebar (Logout tidak akan turun tertutup konten lagi) */}
-        <div className="p-5 border-t border-white/10 bg-black/20 mt-auto">
+        <div className="p-5 border-t border-white/10 bg-black/20 mt-auto space-y-3">
+          {/* --- UPDATE: TOMBOL JUMP KE WORKSPACE HANYA UNTUK SUPER ADMIN --- */}
+          {userRole === 'super_admin' && (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 hover:border-emerald-500/30 border border-transparent transition-all group shadow-inner"
+            >
+              <MonitorPlay className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-bold text-sm tracking-wide">User Workspace</span>
+            </Link>
+          )}
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 border border-transparent transition-all group shadow-inner"
@@ -119,10 +139,7 @@ export default function AdminLayout({
         </div>
       </aside>
 
-      {/* Area Konten Utama */}
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative z-10">
-        
-        {/* Header Mobile */}
         <div className="md:hidden p-4 border-b border-white/10 flex justify-between items-center bg-card/60 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.3)] relative z-20">
           <h2 className="font-black text-foreground flex items-center gap-2.5 tracking-tight text-lg">
             <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-inner">
@@ -130,12 +147,18 @@ export default function AdminLayout({
             </div>
             Admin Panel
           </h2>
-          <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 p-2.5 bg-black/40 hover:bg-red-500/10 rounded-xl border border-white/10 hover:border-red-500/30 transition-all shadow-inner">
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-3">
+            {userRole === 'super_admin' && (
+              <Link href="/dashboard" className="text-emerald-400 hover:text-emerald-300 p-2.5 bg-black/40 hover:bg-emerald-500/10 rounded-xl border border-white/10 hover:border-emerald-500/30 transition-all shadow-inner">
+                <MonitorPlay className="w-4 h-4" />
+              </Link>
+            )}
+            <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 p-2.5 bg-black/40 hover:bg-red-500/10 rounded-xl border border-white/10 hover:border-red-500/30 transition-all shadow-inner">
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         
-        {/* PERBAIKAN: Konten Halaman Dibuat Scrollable (hanya area ini yang bisa di-scroll) */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
           {children}
         </div>

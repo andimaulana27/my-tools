@@ -13,15 +13,16 @@ import {
   Loader2,
   Cpu,
   Sparkles,
-  Palette // Ikon baru untuk Image Engine
+  Palette,
+  ShieldCheck 
 } from "lucide-react";
 
 type UserProfile = {
   username: string;
   token_balance: number;
+  role: string; 
 };
 
-// KOMPONEN SENTER TERPISAH: Mencegah re-render seluruh halaman saat mouse bergerak
 const InteractiveSpotlight = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
@@ -51,7 +52,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mengambil data awal user
   useEffect(() => {
     let isMounted = true;
 
@@ -61,14 +61,22 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
       if (authData.user) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("username, token_balance")
+          .select("username, token_balance, role") 
           .eq("id", authData.user.id)
           .single();
 
         if (isMounted && profileData) {
+          // --- UPDATE: TOLAK AKSES ADMIN BIASA KE WORKSPACE USER ---
+          if (profileData.role === 'admin') {
+            router.push("/admin/dashboard");
+            return;
+          }
+          // --------------------------------------------------------
+
           setProfile({
             username: profileData.username,
             token_balance: profileData.token_balance,
+            role: profileData.role,
           });
         }
       } else {
@@ -85,7 +93,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     };
   }, [router]);
 
-  // EVENT LISTENER: Mendengarkan sinyal update token dari halaman metadata & image engine
   useEffect(() => {
     const handleTokenUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ newTokenBalance: number }>;
@@ -101,7 +108,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     router.push("/login");
   };
 
-  // MENU BARU DITAMBAHKAN DI SINI
   const menuItems = [
     { name: "Workspace", icon: LayoutDashboard, path: "/dashboard" },
     { name: "Metadata Engine", icon: Cpu, path: "/metadata" },
@@ -121,13 +127,11 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="h-screen bg-background flex relative overflow-hidden antialiased">
       
-      {/* BACKGROUND MODERN GLOBAL: Faint Dot Pattern */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.15]" />
         <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,transparent_20%,#000_100%)]" />
       </div>
 
-      {/* Background Aurora Redup untuk Identitas User Workspace */}
       <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none [mask-image:radial-gradient(ellipse_100%_100%_at_50%_0%,#000_80%,transparent_100%)]">
         <div className="absolute top-[10%] left-[20%] w-[40%] h-[40%] bg-canva-purple/5 blur-[120px] rounded-[100%] animate-blob" />
         <div className="absolute bottom-[20%] right-[10%] w-[50%] h-[50%] bg-adobe-pink/5 blur-[140px] rounded-[100%] animate-blob animation-delay-2000" />
@@ -135,7 +139,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
       <InteractiveSpotlight />
 
-      {/* Sidebar Desktop (Glassmorphism Premium) */}
       <aside className="w-[280px] h-full bg-card/40 backdrop-blur-2xl border-r border-white/10 hidden md:flex flex-col relative z-20 shadow-[8px_0_30px_rgba(0,0,0,0.5)]">
         
         <div className="p-7 border-b border-white/10 flex items-center gap-4 relative overflow-hidden group">
@@ -148,7 +151,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           </div>
         </div>
 
-        {/* User Info & Token Balance */}
         <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2.5 bg-black/40 border border-white/10 rounded-xl shrink-0 shadow-inner">
@@ -158,7 +160,9 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               <p className="text-sm font-bold text-foreground truncate">
                 @{profile?.username}
               </p>
-              <p className="text-xs text-canva-cyan truncate font-medium">Contributor</p>
+              <p className="text-xs text-canva-cyan truncate font-medium">
+                {profile?.role === 'super_admin' ? 'Super Admin Mode' : 'Contributor'}
+              </p>
             </div>
           </div>
           <div className="flex items-center justify-between bg-black/40 border border-white/10 px-4 py-3 rounded-xl shadow-inner group transition-colors hover:border-white/20">
@@ -192,7 +196,17 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        <div className="p-5 border-t border-white/10 bg-black/20 mt-auto">
+        <div className="p-5 border-t border-white/10 bg-black/20 mt-auto space-y-3">
+          {/* --- UPDATE: TOMBOL ADMIN PANEL HANYA UNTUK SUPER ADMIN SAJA --- */}
+          {profile?.role === 'super_admin' && (
+            <Link
+              href="/admin/dashboard"
+              className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 hover:border-blue-500/30 border border-transparent transition-all group shadow-inner"
+            >
+              <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-bold text-sm tracking-wide">Admin Panel</span>
+            </Link>
+          )}
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 border border-transparent transition-all group shadow-inner"
@@ -203,10 +217,8 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative z-10">
         
-        {/* Mobile Header (Glassmorphism) */}
         <div className="md:hidden p-4 border-b border-white/10 flex justify-between items-center bg-card/60 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.3)] relative z-20">
           <h2 className="font-black text-foreground flex items-center gap-2.5 tracking-tight text-lg">
             <div className="p-1.5 bg-white/10 border border-white/20 rounded-lg shadow-inner">
@@ -219,13 +231,17 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               <Coins className="w-4 h-4 text-yellow-400" />
               {profile?.token_balance || 0}
             </span>
+            {profile?.role === 'super_admin' && (
+              <Link href="/admin/dashboard" className="text-blue-400 hover:text-blue-300 p-2.5 bg-black/40 hover:bg-blue-500/10 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all shadow-inner">
+                <ShieldCheck className="w-4 h-4" />
+              </Link>
+            )}
             <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 p-2.5 bg-black/40 hover:bg-red-500/10 rounded-xl border border-white/10 hover:border-red-500/30 transition-all shadow-inner">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
         
-        {/* Konten Halaman Scrollable */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 custom-scrollbar">
           {children}
         </div>

@@ -2,11 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { createNewUser, deleteAuthUser, updateUserPassword, getAdminUsersData, updateUserToken } from "../actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, X, Loader2, Coins, Search, User, Activity, ChevronLeft, ChevronRight, Lock, ShieldAlert } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Loader2, Coins, Search, User, Activity, ChevronLeft, ChevronRight, Lock, ShieldAlert, Crown } from "lucide-react";
 
-// Tipe Data Eksplisit untuk mengatasi error "Unexpected any"
 type Profile = {
   id: string;
   username: string;
@@ -23,6 +23,7 @@ type UsageRecord = {
 
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<Profile[]>([]);
+  const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -33,6 +34,7 @@ export default function UsersManagementPage() {
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newTokens, setNewTokens] = useState(100);
+  const [newUserRole, setNewUserRole] = useState("user"); 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -42,7 +44,6 @@ export default function UsersManagementPage() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPasswordForReset, setNewPasswordForReset] = useState("");
 
-  // Menggunakan Server Action untuk bypass RLS dengan tipe data yang ketat
   const refreshUsers = async () => {
     setLoading(true);
     const result = await getAdminUsersData();
@@ -67,7 +68,13 @@ export default function UsersManagementPage() {
 
   useEffect(() => {
     let isMounted = true;
-    const loadInitialUsers = async () => {
+    const loadData = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData.user) {
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", authData.user.id).single();
+        if (isMounted) setCurrentUser(profile);
+      }
+
       const result = await getAdminUsersData();
       if (isMounted) {
         if (result.success && result.profiles) {
@@ -86,19 +93,20 @@ export default function UsersManagementPage() {
         setLoading(false);
       }
     };
-    loadInitialUsers();
+    loadData();
     return () => { isMounted = false; };
   }, []);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const result = await createNewUser(newUsername, newPassword, newTokens);
+    const result = await createNewUser(newUsername, newPassword, newTokens, newUserRole);
 
     if (result.success) {
       setNewUsername("");
       setNewPassword("");
       setNewTokens(100);
+      setNewUserRole("user");
       setIsAddModalOpen(false);
       await refreshUsers();
     } else {
@@ -132,7 +140,7 @@ export default function UsersManagementPage() {
     const result = await updateUserPassword(selectedUser.id, newPasswordForReset);
 
     if (result.success) {
-      alert(`Password untuk pengguna @${selectedUser.username} berhasil di-reset.`);
+      alert(`Password untuk pengguna ${selectedUser.username} berhasil di-reset.`);
       setIsPasswordModalOpen(false);
       setSelectedUser(null);
       setNewPasswordForReset("");
@@ -155,7 +163,16 @@ export default function UsersManagementPage() {
     }
   };
 
-  const filteredUsers = users.filter((user) =>
+  const isSuperAdmin = currentUser?.role === 'super_admin';
+  const isAdmin = currentUser?.role === 'admin';
+
+  const roleFilteredUsers = users.filter((user) => {
+    if (isSuperAdmin) return true; 
+    if (isAdmin) return user.role === 'user'; 
+    return false;
+  });
+
+  const filteredUsers = roleFilteredUsers.filter((user) =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -187,7 +204,9 @@ export default function UsersManagementPage() {
             <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight flex items-center gap-3">
               User Management
             </h1>
-            <p className="text-muted-foreground mt-2 text-lg font-medium">Kelola akses, sandi, dan pantau aktivitas token pengguna secara efisien.</p>
+            <p className="text-muted-foreground mt-2 text-lg font-medium">
+              {isSuperAdmin ? "Akses Penuh Super Admin: Kelola akses, sandi, token, dan hak istimewa pengguna." : "Akses Admin: Tambah, hapus, dan kelola pengguna standar."}
+            </p>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
@@ -217,7 +236,7 @@ export default function UsersManagementPage() {
             </div>
             <div className="hidden md:flex ml-auto items-center gap-2 bg-black/40 border border-white/10 px-4 py-2 rounded-xl shadow-inner">
               <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{filteredUsers.length} Accounts Found</span>
+              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{filteredUsers.length} Accounts</span>
             </div>
           </div>
 
@@ -250,77 +269,109 @@ export default function UsersManagementPage() {
                     </td>
                   </tr>
                 ) : (
-                  currentUsers.map((user) => (
-                    <tr key={user.id} className="hover:bg-white/5 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2.5 rounded-xl border shadow-inner group-hover:scale-110 transition-transform ${user.role === 'admin' ? 'bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/20' : 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20'}`}>
-                            {user.role === 'admin' ? <ShieldAlert className="w-4 h-4 text-red-400" /> : <User className="w-4 h-4 text-blue-400" />}
+                  currentUsers.map((user) => {
+                    const canManageUser = isSuperAdmin || (isAdmin && user.role === 'user');
+                    const canEditToken = isSuperAdmin;
+
+                    return (
+                      <tr key={user.id} className="hover:bg-white/5 transition-colors group">
+                        
+                        {/* --- DESAIN BARU ACCOUNT DETAIL YANG PROFESSIONAL --- */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            {/* Modern Avatar Icon Container */}
+                            <div className={`relative flex items-center justify-center w-11 h-11 rounded-2xl border backdrop-blur-md shadow-inner group-hover:scale-105 transition-all duration-300 ${
+                              user.role === 'super_admin' ? 'bg-purple-500/10 border-purple-500/30 text-purple-400' :
+                              user.role === 'admin' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 
+                              'bg-blue-500/10 border-blue-500/30 text-blue-400'
+                            }`}>
+                              {user.role === 'super_admin' ? <Crown className="w-5 h-5 relative z-10" /> : 
+                               user.role === 'admin' ? <ShieldAlert className="w-5 h-5 relative z-10" /> : 
+                               <User className="w-5 h-5 relative z-10" />}
+                               {/* Soft Glow Effect */}
+                               <div className={`absolute inset-0 blur-md opacity-30 rounded-2xl ${
+                                  user.role === 'super_admin' ? 'bg-purple-500' :
+                                  user.role === 'admin' ? 'bg-red-500' : 
+                                  'bg-blue-500'
+                               }`} />
+                            </div>
+                            
+                            {/* Clean User Text */}
+                            <div className="flex flex-col justify-center">
+                              <span className="font-semibold text-white text-sm tracking-wide">
+                                {user.username}
+                              </span>
+                              <span className={`text-[11px] font-medium mt-0.5 flex items-center gap-1.5 ${
+                                user.role === 'super_admin' ? 'text-purple-400' :
+                                user.role === 'admin' ? 'text-red-400' : 
+                                'text-gray-400'
+                              }`}>
+                                {user.role === 'super_admin' && "Super Admin"}
+                                {user.role === 'admin' && "System Admin"}
+                                {user.role === 'user' && "Contributor"}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            {/* Tailwind conflict "block flex" diperbaiki di sini menjadi "flex" saja */}
-                            <span className="font-bold text-white text-base flex items-center gap-2">
-                              @{user.username}
-                              {user.role === 'admin' && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-red-500 text-white uppercase tracking-wider">ADMIN</span>
-                              )}
-                            </span>
-                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">ID: {user.id.substring(0,8)}... • ROLE: {user.role || 'USER'}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 bg-black/40 text-white font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-inner group-hover:bg-yellow-500/10 group-hover:border-yellow-500/20 transition-colors">
-                          <Coins className="w-4 h-4 text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]" />
-                          {user.token_balance}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="inline-flex items-center gap-1.5 bg-black/40 text-gray-300 font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-inner group-hover:bg-blue-500/10 group-hover:border-blue-500/20 transition-colors">
-                          <Activity className="w-4 h-4 text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]" />
-                          {user.total_used}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-gray-400 font-medium">
-                        {new Date(user.created_at).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setNewPasswordForReset("");
-                            setIsPasswordModalOpen(true);
-                          }}
-                          className="p-2.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all ml-1 border border-transparent hover:border-white/10 shadow-sm"
-                          title="Reset Password"
-                        >
-                          <Lock className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setEditTokens(user.token_balance);
-                            setIsEditModalOpen(true);
-                          }}
-                          className="p-2.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all ml-1 border border-transparent hover:border-white/10 shadow-sm"
-                          title="Edit Token"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id, user.username)}
-                          className="p-2.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all ml-1 border border-transparent hover:border-red-500/20 shadow-sm"
-                          title="Hapus User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                        {/* ------------------------------------------------ */}
+
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 bg-black/40 text-white font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-inner group-hover:bg-yellow-500/10 group-hover:border-yellow-500/20 transition-colors">
+                            <Coins className="w-4 h-4 text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.5)]" />
+                            {user.token_balance}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex items-center gap-1.5 bg-black/40 text-gray-300 font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-inner group-hover:bg-blue-500/10 group-hover:border-blue-500/20 transition-colors">
+                            <Activity className="w-4 h-4 text-blue-400 drop-shadow-[0_0_5px_rgba(96,165,250,0.5)]" />
+                            {user.total_used}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-gray-400 font-medium">
+                          {new Date(user.created_at).toLocaleDateString("id-ID", {
+                            day: "numeric", month: "long", year: "numeric",
+                          })}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {canManageUser && (
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setNewPasswordForReset("");
+                                setIsPasswordModalOpen(true);
+                              }}
+                              className="p-2.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all ml-1 border border-transparent hover:border-white/10 shadow-sm"
+                              title="Reset Password"
+                            >
+                              <Lock className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canEditToken && (
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setEditTokens(user.token_balance);
+                                setIsEditModalOpen(true);
+                              }}
+                              className="p-2.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all ml-1 border border-transparent hover:border-white/10 shadow-sm"
+                              title="Edit Token"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canManageUser && (
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.username)}
+                              className="p-2.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all ml-1 border border-transparent hover:border-red-500/20 shadow-sm"
+                              title="Hapus User"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -406,7 +457,6 @@ export default function UsersManagementPage() {
                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-white/30 focus:bg-black/60 focus:ring-1 focus:ring-white/20 transition-all shadow-inner"
                     placeholder="misal: editor01"
                   />
-                  <p className="text-[11px] text-gray-500 font-medium ml-1">Otomatis diubah menjadi lowercase dan tanpa spasi.</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Password</label>
@@ -420,6 +470,22 @@ export default function UsersManagementPage() {
                     minLength={6}
                   />
                 </div>
+                
+                {isSuperAdmin && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Role Akun</label>
+                    <select
+                      value={newUserRole}
+                      onChange={(e) => setNewUserRole(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 px-4 text-white focus:outline-none focus:border-white/30 focus:bg-black/60 focus:ring-1 focus:ring-white/20 transition-all shadow-inner appearance-none"
+                    >
+                      <option value="user" className="bg-gray-900">Contributor</option>
+                      <option value="admin" className="bg-gray-900">System Admin</option>
+                      <option value="super_admin" className="bg-gray-900 text-purple-400 font-bold">Super Admin</option>
+                    </select>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Initial Token Kuota</label>
                   <div className="relative">
@@ -430,7 +496,8 @@ export default function UsersManagementPage() {
                       min={0}
                       value={newTokens}
                       onChange={(e) => setNewTokens(Number(e.target.value))}
-                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white focus:outline-none focus:border-white/30 focus:bg-black/60 focus:ring-1 focus:ring-white/20 transition-all shadow-inner"
+                      disabled={!isSuperAdmin} 
+                      className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white focus:outline-none focus:border-white/30 focus:bg-black/60 focus:ring-1 focus:ring-white/20 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -452,7 +519,7 @@ export default function UsersManagementPage() {
 
       {/* Modal Edit Token */}
       <AnimatePresence>
-        {isEditModalOpen && selectedUser && (
+        {isEditModalOpen && selectedUser && isSuperAdmin && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -472,7 +539,7 @@ export default function UsersManagementPage() {
                 <div className="space-y-4">
                   <div className="text-center bg-black/40 p-4 rounded-2xl border border-white/5 shadow-inner flex flex-col items-center gap-2">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-1">Target Account</span>
-                    <span className="text-white font-black text-lg">@{selectedUser.username}</span>
+                    <span className="text-white font-black text-lg">{selectedUser.username}</span>
                     <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20">Total Terpakai: {selectedUser.total_used} Token</span>
                   </div>
                   
@@ -487,7 +554,6 @@ export default function UsersManagementPage() {
                       className="w-full bg-black/60 border border-white/10 rounded-2xl py-6 pl-16 pr-6 text-white focus:outline-none focus:border-yellow-500/50 focus:ring-1 focus:ring-yellow-500/20 transition-all text-4xl font-black shadow-inner"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-500 font-medium text-center">Token digunakan untuk men-generate metadata AI.</p>
                 </div>
                 
                 <button
@@ -525,7 +591,7 @@ export default function UsersManagementPage() {
                 <div className="space-y-4">
                   <div className="text-center bg-black/40 p-4 rounded-2xl border border-white/5 shadow-inner flex flex-col items-center gap-2">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-1">Target Account</span>
-                    <span className="text-white font-black text-lg">@{selectedUser.username}</span>
+                    <span className="text-white font-black text-lg">{selectedUser.username}</span>
                   </div>
                   
                   <div className="space-y-2">
@@ -540,7 +606,6 @@ export default function UsersManagementPage() {
                       className="w-full bg-black/60 border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all shadow-inner"
                     />
                   </div>
-                  <p className="text-[11px] text-gray-500 font-medium text-center">Admin dapat mereset sandi ini secara paksa tanpa memerlukan input sandi lama dari pengguna.</p>
                 </div>
                 
                 <button
