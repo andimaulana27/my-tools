@@ -6,8 +6,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Microstock Research - AI Metadata Engine",
-  description: "Platform AI cerdas untuk menganalisis dan menghasilkan metadata (judul & keyword) berkinerja tinggi bagi kontributor Adobe Stock dan Canva.",
+  title: "My Tools - AI Workspace",
+  description: "Private AI productivity suite and metadata engine for digital creators.",
 };
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" className="dark">
-      <body className={`${inter.className} bg-background text-foreground antialiased selection:bg-primary/30 selection:text-primary`}>
+      <body className={`${inter.className} bg-[#050505] text-zinc-200 antialiased selection:bg-white/10 selection:text-white`}>
         {children}
       </body>
     </html>

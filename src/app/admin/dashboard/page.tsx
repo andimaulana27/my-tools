@@ -4,33 +4,53 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { motion } from "framer-motion";
-import { Users, Coins, Activity, Loader2, TrendingUp } from "lucide-react";
+import { 
+  Users, 
+  Coins, 
+  Activity, 
+  TrendingUp, 
+  Clock, 
+  ShieldAlert,
+  Zap,
+  LayoutGrid
+} from "lucide-react";
+
+type Stats = {
+  totalUsers: number;
+  totalTokens: number;
+  totalUsage: number;
+};
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
-    totalTokensUsed: 0,
-    activeTools: 2, 
+    totalTokens: 0,
+    totalUsage: 0,
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
+      // Hitung Total User
       const { count: usersCount } = await supabase
         .from("profiles")
-        .select("*", { count: "exact", head: true })
-        .eq("role", "user");
+        .select("*", { count: 'exact', head: true });
 
-      const { data: usageData } = await supabase
+      // Hitung Total Token & Penggunaan
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("token_balance");
+      
+      const { count: usageCount } = await supabase
         .from("tools_usage")
-        .select("tokens_used");
+        .select("*", { count: 'exact', head: true });
 
-      const totalTokens = usageData?.reduce((acc, curr) => acc + curr.tokens_used, 0) || 0;
+      const totalTokens = profiles?.reduce((sum, p) => sum + p.token_balance, 0) || 0;
 
       setStats({
         totalUsers: usersCount || 0,
-        totalTokensUsed: totalTokens,
-        activeTools: 2,
+        totalTokens: totalTokens,
+        totalUsage: usageCount || 0,
       });
       setLoading(false);
     }
@@ -39,126 +59,90 @@ export default function AdminDashboard() {
   }, []);
 
   const statCards = [
-    {
-      title: "Total Registered Users",
-      value: stats.totalUsers,
-      icon: Users,
-      description: "Pengguna aktif dalam sistem",
-      color: "text-blue-400",
-      bgGlow: "bg-blue-500/10",
-      border: "border-blue-500/20",
-      gradient: "from-blue-500 to-cyan-400"
-    },
-    {
-      title: "API Tokens Consumed",
-      value: stats.totalTokensUsed.toLocaleString(),
-      icon: Coins,
-      description: "Total token AI yang terpakai",
-      color: "text-yellow-400",
-      bgGlow: "bg-yellow-500/10",
-      border: "border-yellow-500/20",
-      gradient: "from-yellow-400 to-orange-400"
-    },
-    {
-      title: "Active Generator Tools",
-      value: stats.activeTools,
-      icon: Activity,
-      description: "Canva & Adobe Stock Metadata",
-      color: "text-emerald-400",
-      bgGlow: "bg-emerald-500/10",
-      border: "border-emerald-500/20",
-      gradient: "from-emerald-400 to-teal-400"
-    },
+    { label: "Registered Creators", value: stats.totalUsers, icon: Users, color: "text-blue-400", bg: "bg-blue-400/10" },
+    { label: "Tokens in Circulation", value: stats.totalTokens, icon: Coins, color: "text-amber-400", bg: "bg-amber-400/10" },
+    { label: "Cloud Operations", value: stats.totalUsage, icon: Activity, color: "text-emerald-400", bg: "bg-emerald-400/10" },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <Loader2 className="w-10 h-10 animate-spin text-white" />
-      </div>
-    );
-  }
-
   return (
-    <div className="relative min-h-full">
-      
-      {/* 1. BACKGROUND DASHBOARD MODERN: Faint Dot Pattern */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* Pola titik-titik abu-abu sangat transparan */}
-        <div className="absolute inset-0 bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.15]" />
-        {/* Masking agar titik-titik hanya terlihat di tengah dan memudar di ujung */}
-        <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_60%_60%_at_50%_30%,transparent_20%,#000_100%)]" />
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="max-w-6xl mx-auto space-y-10"
+    >
+      {/* Header Overview */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+              <LayoutGrid className="w-5 h-5 text-zinc-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">System Overview</h1>
+          </div>
+          <p className="text-zinc-500 font-medium">Monitoring real-time activity and resource distribution across <span className="text-zinc-300 font-bold">My Tools</span> ecosystem.</p>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Network Stable</span>
+        </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="relative z-10 space-y-8 max-w-6xl mx-auto"
-      >
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-white/5 pb-6">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight flex items-center gap-3">
-              System Overview
-              <span className="flex h-3 w-3 relative ml-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-              </span>
-            </h1>
-            <p className="text-muted-foreground mt-2 text-lg font-medium">
-              Pantau aktivitas pengguna dan penggunaan kuota API sistem secara realtime.
-            </p>
-          </div>
-          <div className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl backdrop-blur-md flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-gray-400" />
-            <span className="text-sm font-bold text-gray-300">Live Status: <span className="text-green-400">Optimal</span></span>
-          </div>
-        </div>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {statCards.map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="bg-white/[0.02] border border-white/5 p-8 rounded-[2rem] relative overflow-hidden group hover:bg-white/[0.04] transition-all"
+          >
+            <div className={`p-3 w-fit rounded-xl ${card.bg} ${card.color} mb-6 border border-white/5`}>
+              <card.icon className="w-6 h-6" />
+            </div>
+            <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{card.label}</p>
+            <h2 className="text-4xl font-black text-white tracking-tighter">
+              {loading ? "..." : card.value.toLocaleString()}
+            </h2>
+            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+              <card.icon size={80} />
+            </div>
+          </motion.div>
+        ))}
+      </div>
 
-        {/* Stats Grid Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {statCards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={stat.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="group relative bg-card/60 backdrop-blur-xl border border-white/10 p-7 rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.2)] hover:-translate-y-1.5 transition-all duration-300 hover:shadow-[0_15px_40px_rgba(0,0,0,0.4)] hover:border-white/20 overflow-hidden"
-              >
-                {/* Efek kilauan diagonal saat dihover */}
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
-                {/* Garis aksen tipis di atas kartu */}
-                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${stat.gradient} opacity-50 group-hover:opacity-100 transition-opacity`} />
-
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className={`p-3.5 rounded-2xl ${stat.bgGlow} ${stat.border} border shadow-inner group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 relative`}>
-                      <Icon className={`w-6 h-6 ${stat.color} relative z-10`} />
-                      {/* Ambient glow di belakang ikon */}
-                      <div className={`absolute inset-0 ${stat.bgGlow} blur-md rounded-2xl`} />
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className={`text-4xl font-black mb-2 tracking-tight text-transparent bg-clip-text bg-gradient-to-br ${stat.gradient} drop-shadow-sm`}>
-                      {stat.value}
-                    </h3>
-                    <p className="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">
-                      {stat.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground font-medium border-t border-white/10 pt-4 mt-2">
-                      {stat.description}
-                    </p>
-                  </div>
+      {/* Bottom Section: Quick Actions / System Health */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
+        <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-8 space-y-6">
+          <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-3 uppercase tracking-widest">
+            <Zap className="w-4 h-4 text-amber-500" />
+            Maintenance & Health
+          </h3>
+          <div className="space-y-4">
+             <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-4">
+                   <div className="p-2 bg-white/5 rounded-lg"><Clock className="w-4 h-4 text-zinc-500"/></div>
+                   <span className="text-xs font-bold text-zinc-400">Auto-Token Reset (pg_cron)</span>
                 </div>
-              </motion.div>
-            );
-          })}
+                <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full border border-emerald-500/20 uppercase">Active</span>
+             </div>
+             <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
+                <div className="flex items-center gap-4">
+                   <div className="p-2 bg-white/5 rounded-lg"><ShieldAlert className="w-4 h-4 text-zinc-500"/></div>
+                   <span className="text-xs font-bold text-zinc-400">Supabase API Security (RLS)</span>
+                </div>
+                <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full border border-emerald-500/20 uppercase">Locked</span>
+             </div>
+          </div>
         </div>
-      </motion.div>
-    </div>
+
+        <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center space-y-4">
+           <div className="p-4 bg-white/5 rounded-full border border-white/10"><TrendingUp className="w-8 h-8 text-zinc-500" /></div>
+           <h3 className="text-lg font-bold text-white">Scale your Workspace</h3>
+           <p className="text-xs text-zinc-500 max-w-xs font-medium">Saat ini sistem berjalan pada infrastruktur free tier yang dioptimalkan. Pantau terus penggunaan token di dashboard admin.</p>
+        </div>
+      </div>
+
+    </motion.div>
   );
 }

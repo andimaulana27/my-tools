@@ -1,26 +1,47 @@
 // src/app/page.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Layers, Image as ImageIcon, Cpu, ShieldCheck } from "lucide-react";
+import { ArrowRight, Layers, Image as ImageIcon, Command, FileCode } from "lucide-react";
 import { motion } from "framer-motion";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
-import { type ISourceOptions, MoveDirection, OutMode } from "@tsparticles/engine";
-import { loadSlim } from "@tsparticles/slim"; 
 
-// 1. KOMPONEN BARU: Memisahkan efek senter agar tidak me-render ulang seluruh halaman
+// --- KOMPONEN ANIMASI BACKGROUND 1: AMBIENT GLOW (AURORA) ---
+const AmbientGlow = () => {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <motion.div
+        animate={{
+          x: [0, 80, -80, 0],
+          y: [0, -40, 40, 0],
+          scale: [1, 1.1, 0.9, 1],
+        }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/4 left-1/4 w-[50vw] h-[50vw] bg-zinc-800/10 blur-[120px] rounded-full mix-blend-screen opacity-50"
+      />
+      <motion.div
+        animate={{
+          x: [0, -80, 80, 0],
+          y: [0, 40, -40, 0],
+          scale: [1, 0.9, 1.1, 1],
+        }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-1/4 right-1/4 w-[60vw] h-[60vw] bg-blue-950/10 blur-[150px] rounded-full mix-blend-screen opacity-30"
+      />
+    </div>
+  );
+};
+
+// --- KOMPONEN ANIMASI BACKGROUND 2: SENTER INTERAKTIF ---
 const InteractiveSpotlight = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      // Menggunakan requestAnimationFrame agar performa mouse tracking lebih ringan
       requestAnimationFrame(() => {
         setMousePosition({ x: e.clientX, y: e.clientY });
       });
     };
-
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
@@ -29,240 +50,140 @@ const InteractiveSpotlight = () => {
     <div 
       className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300 mix-blend-screen"
       style={{
-        background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.06), transparent 40%)`
+        background: `radial-gradient(800px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.02), transparent 40%)`
       }}
     />
   );
 };
 
 export default function HomePage() {
-  const [particlesInit, setParticlesInit] = useState(false);
-
-  // Inisialisasi engine particles (hanya sekali saat mount)
-  useEffect(() => {
-    initParticlesEngine(async (engine) => {
-      await loadSlim(engine);
-    }).then(() => {
-      setParticlesInit(true);
-    });
-  }, []);
-
-  // Konfigurasi Gerakan Partikel (Efek Jaringan AI)
-  const particlesOptions: ISourceOptions = useMemo(
-    () => ({
-      fpsLimit: 120,
-      interactivity: {
-        events: {
-          onClick: { enable: true, mode: "push" }, 
-          onHover: { 
-            enable: true, 
-            mode: "grab", 
-            parallax: { enable: true, force: 60, smooth: 10 } 
-          },
-        },
-        modes: {
-          push: { quantity: 4 },
-          grab: { distance: 200, links: { opacity: 0.5 } },
-        },
-      },
-      particles: {
-        color: { value: "#ffffff" },
-        links: {
-          color: "#ffffff",
-          distance: 150,
-          enable: true, 
-          opacity: 0.15,
-          width: 1,
-        },
-        move: {
-          direction: MoveDirection.none,
-          enable: true, 
-          outModes: { default: OutMode.out },
-          random: true, 
-          speed: 1.2, 
-          straight: false,
-        },
-        number: {
-          density: { enable: true, area: 800 },
-          value: 80, 
-        },
-        opacity: {
-          value: { min: 0.1, max: 0.6 }, 
-          animation: { enable: true, speed: 1, sync: false }
-        },
-        shape: { type: "circle" },
-        size: {
-          value: { min: 1, max: 3 },
-        },
-      },
-      detectRetina: true,
-      fullScreen: { enable: false }, 
-    }),
-    []
-  );
-
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
+    <div className="min-h-screen flex flex-col relative overflow-hidden bg-[#050505] text-zinc-200 font-sans">
       
-      {/* Efek Background Premium: Retro Grid / Dot Pattern */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-
-      {/* Efek Partikel Bergerak & Saling Terhubung (tsParticles) */}
-      {particlesInit && (
-        <Particles
-          id="tsparticles"
-          className="absolute inset-0 z-0 pointer-events-none"
-          options={particlesOptions}
-        />
-      )}
-
-      {/* Panggil komponen senter terpisah di sini */}
-      <InteractiveSpotlight />
-
-      {/* Efek Latar Belakang Aurora Halus */}
-      <div className="absolute inset-0 overflow-hidden -z-10 pointer-events-none [mask-image:radial-gradient(ellipse_100%_100%_at_50%_0%,#000_70%,transparent_100%)]">
-        <div className="absolute -top-[10%] -left-[10%] w-[70%] h-[40%] bg-white/5 blur-[120px] rounded-[100%] animate-blob transform -rotate-12" />
-        <div className="absolute top-[5%] left-[30%] w-[50%] h-[30%] bg-gray-400/5 blur-[140px] rounded-[100%] animate-blob animation-delay-2000 transform rotate-12" />
-        <div className="absolute -top-[5%] -right-[10%] w-[60%] h-[40%] bg-white/5 blur-[130px] rounded-[100%] animate-blob" style={{ animationDelay: '4s' }} />
+      {/* BACKGROUND LAYER 1: ANIMATED DOT MESH */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+        {/* Layer Dot Mesh yang bergerak (Class animate-grid ada di globals.css) */}
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] animate-grid opacity-80" />
+        {/* Gradien penutup agar grid tidak terlalu kaku */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/80 to-[#050505]" />
       </div>
 
-      {/* Navigasi Atas (Floating Professional Header) */}
-      <div className="fixed top-6 inset-x-0 flex justify-center z-50 px-4 transition-all duration-300 animate-slide-up">
-        <header className="w-full max-w-6xl bg-card/40 backdrop-blur-2xl border border-white/10 rounded-full h-16 flex items-center justify-between px-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          <div className="flex items-center gap-3 group cursor-pointer">
-            <span className="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              Microstock Research
+      {/* BACKGROUND LAYER 2: AMBIENT GLOW & SPOTLIGHT */}
+      <AmbientGlow />
+      <InteractiveSpotlight />
+
+      {/* HEADER (Floating Minimalist) */}
+      <div className="fixed top-6 inset-x-0 flex justify-center z-50 px-4">
+        <header className="w-full max-w-5xl bg-white/[0.02] backdrop-blur-xl border border-white/5 rounded-2xl h-14 flex items-center justify-between px-5 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
+          <div className="flex items-center gap-2.5 group cursor-pointer">
+            <div className="p-1.5 bg-white/5 rounded-md border border-white/10 group-hover:bg-white/10 transition-colors">
+              <Command className="w-4 h-4 text-zinc-300" />
+            </div>
+            <span className="font-bold text-sm tracking-wide text-zinc-100 uppercase">
+              My Tools
             </span>
           </div>
-          <nav className="flex items-center gap-2">
-            <Link 
-              href="/login" 
-              className="text-sm font-medium text-muted-foreground hover:text-white px-4 py-2 rounded-full hover:bg-white/5 transition-all mr-2"
-            >
-              Contributor Login
+          <nav className="flex items-center gap-6">
+            <Link href="/login" className="text-sm font-medium text-zinc-500 hover:text-white transition-colors">
+              Sign In
             </Link>
             <Link 
               href="/login" 
-              className="relative text-sm font-bold bg-white text-black px-6 py-2.5 rounded-full hover:bg-gray-200 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_25px_rgba(255,255,255,0.4)]"
+              className="relative text-[11px] font-bold bg-zinc-100 text-black px-4 py-2 rounded-lg hover:bg-white transition-all active:scale-95 shadow-lg"
             >
-              Get Started
+              Enter Workspace
             </Link>
           </nav>
         </header>
       </div>
 
-      {/* Bagian Hero (Utama) */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 pt-48 pb-20 z-10 relative">
+      {/* HERO SECTION */}
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 pt-40 pb-20 z-10 relative">
         
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-gray-300 mb-8 hover:bg-white/10 transition-colors cursor-pointer backdrop-blur-sm"
-        >
-          <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse border border-green-400"></span>
-          AI Metadata Engine is Online
-        </motion.div>
 
         <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter text-foreground max-w-5xl leading-[1.1]"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-6xl md:text-8xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-600 max-w-5xl leading-[0.95] mb-6"
         >
-          Precision AI Metadata for <br className="hidden md:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-600 drop-shadow-sm">
-             Global Creators.
-          </span>
+          Streamline your <br className="hidden md:block" /> creation cycle.
         </motion.h1>
         
         <motion.p 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-8 text-lg md:text-xl text-muted-foreground max-w-2xl font-medium leading-relaxed"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-lg md:text-xl text-zinc-500 max-w-2xl font-medium leading-relaxed"
         >
-          Tingkatkan rasio konversi portofolio Anda. Analisis setiap aset dengan AI cerdas untuk menghasilkan judul SEO dan kata kunci berkinerja tinggi.
+          Platform utilitas pribadi dengan kecerdasan AI. Optimasi metadata, automasi penamaan aset, dan generator gambar cerdas dalam satu antarmuka minimalis.
         </motion.p>
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-12 flex flex-col sm:flex-row gap-4"
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-12"
         >
           <Link 
             href="/login" 
-            className="group flex items-center justify-center gap-2 bg-white text-black px-8 py-4 rounded-full font-bold text-lg hover:scale-[1.02] active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.3)]"
+            className="group flex items-center justify-center gap-2 bg-zinc-100 text-black px-8 py-4 rounded-xl font-bold text-sm hover:bg-white hover:scale-[1.02] active:scale-95 transition-all shadow-xl"
           >
-            Masuk ke Workspace 
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            Launch System 
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
         </motion.div>
 
-        {/* Fitur Cards */}
+        {/* FEATURE CARDS (Sleek & Minimal) */}
         <motion.div 
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mt-32 text-left relative z-20"
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-5xl mt-32 text-left"
         >
-          {/* Adobe Stock Card */}
-          <div className="group relative bg-card/60 backdrop-blur-md border border-card-border p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-adobe-red/20 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-adobe-red/5 to-adobe-pink/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-adobe-red to-adobe-pink transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out" />
-            <div className="relative z-10">
-              <div className="w-14 h-14 bg-adobe-red/10 text-adobe-red rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 border border-adobe-red/20 shadow-inner">
-                <Layers className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-adobe-red group-hover:to-adobe-pink transition-all">Adobe Stock Ready</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Format ekspor CSV yang 100% kompatibel dengan portal kontributor Adobe Stock, lengkap dengan tebakan ID Kategori otomatis dari AI.
-              </p>
+          {/* Metadata Card */}
+          <div className="group bg-white/[0.01] border border-white/5 p-8 rounded-2xl transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10">
+            <div className="w-10 h-10 bg-white/5 text-zinc-400 rounded-lg flex items-center justify-center mb-6 border border-white/5 transition-colors group-hover:text-white">
+              <Layers className="w-5 h-5" />
             </div>
+            <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-widest mb-3">AI Metadata</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed font-medium">
+              Analisis visual instan untuk Adobe Stock & Canva. Menghasilkan judul SEO dan kata kunci volume tinggi.
+            </p>
           </div>
 
-          {/* Canva Card */}
-          <div className="group relative bg-card/60 backdrop-blur-md border border-card-border p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-canva-purple/20 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-canva-cyan/5 to-canva-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-canva-cyan to-canva-purple transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out" />
-            <div className="relative z-10">
-              <div className="w-14 h-14 bg-canva-cyan/10 text-canva-cyan rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-500 border border-canva-cyan/20 shadow-inner">
-                <ImageIcon className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-canva-cyan group-hover:to-canva-purple transition-all">Canva Optimization</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Pembuatan metadata khusus untuk review Canva Creator. Otomatis membatasi keyword maksimal (20 kata) dan format nama artist yang presisi.
-              </p>
+          {/* Generator Card */}
+          <div className="group bg-white/[0.01] border border-white/5 p-8 rounded-2xl transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10">
+            <div className="w-10 h-10 bg-white/5 text-zinc-400 rounded-lg flex items-center justify-center mb-6 border border-white/5 transition-colors group-hover:text-white">
+              <ImageIcon className="w-5 h-5" />
             </div>
+            <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-widest mb-3">Asset Engine</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed font-medium">
+              Sistem generasi &quot;Sticker Sheet&quot; massal. Maksimalkan kuota API dengan hasil variasi dalam satu kanvas.
+            </p>
           </div>
 
-          {/* Secure Token Card */}
-          <div className="group relative bg-card/60 backdrop-blur-md border border-card-border p-8 rounded-3xl transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-blue-500/20 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500 transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-500 ease-out" />
-            <div className="relative z-10">
-              <div className="w-14 h-14 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500 border border-blue-500/20 shadow-inner">
-                <ShieldCheck className="w-7 h-7" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-3 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-indigo-500 transition-all">Secure Token System</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Arsitektur keamanan level enterprise dengan pemrosesan API Key di sisi server (Server Actions) dan sistem kuota token per pengguna.
-              </p>
+          {/* Naming Card */}
+          <div className="group bg-white/[0.01] border border-white/5 p-8 rounded-2xl transition-all duration-300 hover:bg-white/[0.03] hover:border-white/10">
+            <div className="w-10 h-10 bg-white/5 text-zinc-400 rounded-lg flex items-center justify-center mb-6 border border-white/5 transition-colors group-hover:text-white">
+              <FileCode className="w-5 h-5" />
             </div>
+            <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-widest mb-3">Logic Naming</h3>
+            <p className="text-zinc-500 text-sm leading-relaxed font-medium">
+              Automasi penamaan folder (kebab-case) dan master file (snake_case) terstruktur untuk arsip profesional.
+            </p>
           </div>
-
         </motion.div>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-10 text-center mt-auto bg-background/80 backdrop-blur-md">
-        <div className="flex items-center justify-center gap-2 mb-3">
-          <Cpu className="w-4 h-4 text-muted-foreground" />
-          <span className="font-bold text-foreground tracking-tight">Microstock Research</span>
+      {/* FOOTER */}
+      <footer className="relative z-10 border-t border-white/5 py-10 text-center mt-auto">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Command className="w-3.5 h-3.5 text-zinc-600" />
+          <span className="font-bold text-zinc-500 text-[11px] tracking-[0.3em] uppercase">My Tools</span>
         </div>
-        <p className="text-xs text-muted-foreground uppercase tracking-widest font-semibold">
-          © {new Date().getFullYear()} • Internal Tool Ecosystem
+        <p className="text-[9px] text-zinc-700 font-bold uppercase tracking-widest">
+          Secure Personal Environment • {new Date().getFullYear()}
         </p>
       </footer>
     </div>

@@ -12,9 +12,16 @@ import {
   User as UserIcon,
   Loader2,
   Cpu,
-  Sparkles,
   Palette,
-  ShieldCheck 
+  ShieldCheck,
+  Activity,
+  Zap,
+  RefreshCw,
+  AudioLines,
+  MonitorPlay,
+  Rocket,
+  LayoutTemplate,
+  Video // <-- Icon baru untuk Video Stock Engine
 } from "lucide-react";
 
 type UserProfile = {
@@ -23,6 +30,7 @@ type UserProfile = {
   role: string; 
 };
 
+// Senter interaktif yang dibuat lebih halus (Clean Dark)
 const InteractiveSpotlight = () => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
@@ -40,7 +48,7 @@ const InteractiveSpotlight = () => {
     <div 
       className="pointer-events-none fixed inset-0 z-30 transition-opacity duration-300 mix-blend-screen"
       style={{
-        background: `radial-gradient(600px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.04), transparent 40%)`
+        background: `radial-gradient(800px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(255,255,255,0.02), transparent 40%)`
       }}
     />
   );
@@ -51,6 +59,9 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // --- STATE UNTUK TRACKER RPM (FREE TIER MONITOR) ---
+  const [rpmTimestamps, setRpmTimestamps] = useState<number[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -66,12 +77,10 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
           .single();
 
         if (isMounted && profileData) {
-          // --- UPDATE: TOLAK AKSES ADMIN BIASA KE WORKSPACE USER ---
           if (profileData.role === 'admin') {
             router.push("/admin/dashboard");
             return;
           }
-          // --------------------------------------------------------
 
           setProfile({
             username: profileData.username,
@@ -93,14 +102,26 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     };
   }, [router]);
 
+  // --- LOGIKA EVENT LISTENER TOKEN & RPM ---
   useEffect(() => {
     const handleTokenUpdate = (e: Event) => {
       const customEvent = e as CustomEvent<{ newTokenBalance: number }>;
       setProfile(prev => prev ? { ...prev, token_balance: customEvent.detail.newTokenBalance } : prev);
+      
+      setRpmTimestamps(prev => [...prev, Date.now()]);
     };
 
     window.addEventListener('tokenBalanceUpdated', handleTokenUpdate);
     return () => window.removeEventListener('tokenBalanceUpdated', handleTokenUpdate);
+  }, []);
+
+  // --- LOGIKA COOLDOWN RPM (Berjalan Setiap Detik) ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const oneMinuteAgo = Date.now() - 60000;
+      setRpmTimestamps(prev => prev.filter(t => t > oneMinuteAgo));
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
@@ -108,73 +129,106 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     router.push("/login");
   };
 
+  // DAFTAR MENU UTAMA (Menambahkan Video Stock Engine)
   const menuItems = [
     { name: "Workspace", icon: LayoutDashboard, path: "/dashboard" },
     { name: "Metadata Engine", icon: Cpu, path: "/metadata" },
     { name: "AI Image Engine", icon: Palette, path: "/image-engine" },
+    { name: "Video Stock Engine", icon: Video, path: "/video-engine" }, // <-- Menu Baru
+    { name: "Pro Converter", icon: RefreshCw, path: "/converter" }, 
+    { name: "AI Voice Studio", icon: AudioLines, path: "/voice-studio" }, 
+    { name: "YouTube SEO", icon: MonitorPlay, path: "/youtube-seo" },
+    { name: "SaaS Blueprint", icon: Rocket, path: "/saas-blueprint" },
+    { name: "UI/UX Engine", icon: LayoutTemplate, path: "/uiux-engine" },
   ];
+
+  const currentRpm = rpmTimestamps.length;
+  // Pewarnaan Tracker yang lebih elegan dan tidak mencolok
+  const rpmColor = currentRpm >= 15 ? 'bg-rose-500' : currentRpm >= 10 ? 'bg-amber-500' : 'bg-emerald-500';
+  const rpmTextColor = currentRpm >= 15 ? 'text-rose-400' : currentRpm >= 10 ? 'text-amber-400' : 'text-emerald-400';
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.15]" />
-        <Loader2 className="w-10 h-10 animate-spin text-white relative z-10" />
-        <p className="text-muted-foreground mt-4 font-medium relative z-10 animate-pulse">Memuat Workspace...</p>
+      <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center relative overflow-hidden">
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-400 relative z-10" />
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-background flex relative overflow-hidden antialiased">
+    <div className="h-screen bg-[#050505] text-zinc-200 flex relative overflow-hidden antialiased font-sans selection:bg-white/20">
       
+      {/* Latar Belakang Clean Modern - Pure Dark Mesh */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(#4b5563_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.15]" />
-        <div className="absolute inset-0 bg-background [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,transparent_20%,#000_100%)]" />
-      </div>
-
-      <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none [mask-image:radial-gradient(ellipse_100%_100%_at_50%_0%,#000_80%,transparent_100%)]">
-        <div className="absolute top-[10%] left-[20%] w-[40%] h-[40%] bg-canva-purple/5 blur-[120px] rounded-[100%] animate-blob" />
-        <div className="absolute bottom-[20%] right-[10%] w-[50%] h-[50%] bg-adobe-pink/5 blur-[140px] rounded-[100%] animate-blob animation-delay-2000" />
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:24px_24px] opacity-70" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505]/80 to-[#050505]" />
       </div>
 
       <InteractiveSpotlight />
 
-      <aside className="w-[280px] h-full bg-card/40 backdrop-blur-2xl border-r border-white/10 hidden md:flex flex-col relative z-20 shadow-[8px_0_30px_rgba(0,0,0,0.5)]">
+      {/* SIDEBAR DESKTOP */}
+      <aside className="w-[280px] h-full bg-black/20 backdrop-blur-2xl border-r border-white/5 hidden md:flex flex-col relative z-20">
         
-        <div className="p-7 border-b border-white/10 flex items-center gap-4 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-canva-cyan to-adobe-pink opacity-50" />
+        {/* Logo/Brand Area */}
+        <div className="p-7 border-b border-white/5 flex items-center gap-4 relative">
           <div>
-            <h2 className="text-xl font-black text-foreground tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              Microstock Research
+            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              <Zap className="w-5 h-5 text-zinc-400" />
+              Microstock
             </h2>
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-1">Creator Panel</p>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mt-1">Creator Panel</p>
           </div>
         </div>
 
-        <div className="p-5 border-b border-white/10 bg-white/5 backdrop-blur-md">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 bg-black/40 border border-white/10 rounded-xl shrink-0 shadow-inner">
-              <UserIcon className="w-4 h-4 text-gray-300" />
+        {/* User & System Status Area */}
+        <div className="p-6 border-b border-white/5 flex flex-col gap-5">
+          {/* User Info Minimalist */}
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/5 rounded-lg border border-white/10 shrink-0">
+              <UserIcon className="w-4 h-4 text-zinc-400" />
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-bold text-foreground truncate">
+              <p className="text-sm font-semibold text-zinc-200 truncate">
                 @{profile?.username}
               </p>
-              <p className="text-xs text-canva-cyan truncate font-medium">
-                {profile?.role === 'super_admin' ? 'Super Admin Mode' : 'Contributor'}
+              <p className="text-[11px] text-zinc-500 truncate font-medium uppercase tracking-wider">
+                {profile?.role === 'super_admin' ? 'Super Admin' : 'Contributor'}
               </p>
             </div>
           </div>
-          <div className="flex items-center justify-between bg-black/40 border border-white/10 px-4 py-3 rounded-xl shadow-inner group transition-colors hover:border-white/20">
-            <span className="text-xs font-semibold text-gray-400 group-hover:text-gray-300 transition-colors">Sisa Token</span>
-            <span className="text-sm font-black text-foreground flex items-center gap-1.5 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
-              <Coins className="w-4 h-4 text-yellow-400" />
-              {profile?.token_balance || 0}
-            </span>
+          
+          {/* Tracker Status Clean Mode */}
+          <div className="bg-black/40 border border-white/5 p-4 rounded-xl space-y-4">
+            {/* Token */}
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">RPD Quota</span>
+              <span className="text-sm font-mono font-bold text-zinc-300 flex items-center gap-1.5">
+                <Coins className="w-3.5 h-3.5 text-zinc-400" />
+                {profile?.token_balance || 0}
+              </span>
+            </div>
+            
+            {/* RPM Progress */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center text-[10px] font-semibold uppercase tracking-widest">
+                <span className="text-zinc-500 flex items-center gap-1.5"><Activity className="w-3 h-3"/> API Load</span>
+                <span className={`font-mono ${rpmTextColor}`}>
+                  {currentRpm} <span className="text-zinc-600">/ 15</span>
+                </span>
+              </div>
+              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden relative">
+                <div 
+                  className={`h-full transition-all duration-500 ease-out ${rpmColor}`} 
+                  style={{ width: `${Math.min((currentRpm / 15) * 100, 100)}%` }} 
+                />
+              </div>
+            </div>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
+        {/* Navigation Menu Utama */}
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1.5 custom-scrollbar">
+          <p className="px-4 mb-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Menu</p>
           {menuItems.map((item) => {
             const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
             const Icon = item.icon;
@@ -182,61 +236,88 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
               <Link
                 key={item.name}
                 href={item.path}
-                className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group relative ${
                   isActive
-                    ? "bg-white/10 text-white font-bold border border-white/20 shadow-inner"
-                    : "text-gray-400 hover:bg-white/5 hover:text-white border border-transparent hover:border-white/10"
+                    ? "bg-white/10 text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                 }`}
               >
-                {isActive && <div className="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent opacity-50" />}
-                <Icon className={`w-5 h-5 relative z-10 transition-colors ${isActive ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]" : "group-hover:text-gray-300"}`} />
-                <span className="relative z-10 text-sm tracking-wide">{item.name}</span>
+                <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"} transition-colors`} />
+                <span className="text-sm tracking-wide">{item.name}</span>
+                {isActive && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-white rounded-r-full" />}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-5 border-t border-white/10 bg-black/20 mt-auto space-y-3">
-          {/* --- UPDATE: TOMBOL ADMIN PANEL HANYA UNTUK SUPER ADMIN SAJA --- */}
+        {/* Footer Actions (Admin Panel, Profile & Logout Group) */}
+        <div className="p-4 border-t border-white/5 space-y-1.5">
+          <p className="px-4 mb-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Account & Admin</p>
+          
+          <Link
+            href="/profile"
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${
+              pathname === "/profile"
+                ? "bg-white/10 text-white font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+            }`}
+          >
+            <UserIcon className={`w-4 h-4 ${pathname === "/profile" ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"}`} />
+            <span className="text-sm font-medium tracking-wide">Profile & Settings</span>
+          </Link>
+
           {profile?.role === 'super_admin' && (
             <Link
               href="/admin/dashboard"
-              className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 hover:border-blue-500/30 border border-transparent transition-all group shadow-inner"
+              className="flex items-center gap-3 px-4 py-2.5 w-full rounded-lg text-zinc-400 hover:bg-white/5 hover:text-white transition-all group"
             >
-              <ShieldCheck className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="font-bold text-sm tracking-wide">Admin Panel</span>
+              <ShieldCheck className="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors" />
+              <span className="text-sm font-medium tracking-wide">Admin Panel</span>
             </Link>
           )}
+
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3.5 w-full rounded-2xl text-gray-400 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 border border-transparent transition-all group shadow-inner"
+            className="flex items-center gap-3 px-4 py-2.5 w-full rounded-lg text-zinc-400 hover:bg-rose-500/10 hover:text-rose-400 transition-all group"
           >
-            <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-bold text-sm tracking-wide">Logout</span>
+            <LogOut className="w-4 h-4 text-zinc-500 group-hover:text-rose-400 transition-colors" />
+            <span className="text-sm font-medium tracking-wide">Logout</span>
           </button>
         </div>
       </aside>
 
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative z-10">
         
-        <div className="md:hidden p-4 border-b border-white/10 flex justify-between items-center bg-card/60 backdrop-blur-2xl shadow-[0_4px_20px_rgba(0,0,0,0.3)] relative z-20">
-          <h2 className="font-black text-foreground flex items-center gap-2.5 tracking-tight text-lg">
-            <div className="p-1.5 bg-white/10 border border-white/20 rounded-lg shadow-inner">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
+        {/* HEADER MOBILE - Clean Mode */}
+        <div className="md:hidden px-5 py-4 border-b border-white/5 flex justify-between items-center bg-black/40 backdrop-blur-xl relative z-20">
+          <h2 className="font-bold text-white flex items-center gap-2 text-lg tracking-tight">
+            <Zap className="w-4 h-4 text-zinc-400" />
             Workspace
           </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-black flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-lg border border-white/10">
-              <Coins className="w-4 h-4 text-yellow-400" />
-              {profile?.token_balance || 0}
-            </span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex flex-col items-end gap-1 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+               <span className="text-sm font-mono font-bold flex items-center gap-1.5 text-zinc-200">
+                 <Coins className="w-3.5 h-3.5 text-zinc-400" />
+                 {profile?.token_balance || 0}
+               </span>
+               <div className="flex items-center gap-1.5">
+                 <Activity className={`w-3 h-3 ${rpmTextColor}`} />
+                 <div className="w-10 h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-full ${rpmColor}`} style={{ width: `${Math.min((currentRpm / 15) * 100, 100)}%` }} />
+                 </div>
+               </div>
+            </div>
+            
+            <Link href="/profile" className="text-zinc-400 hover:text-white p-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-transparent">
+               <UserIcon className="w-4 h-4" />
+            </Link>
+
             {profile?.role === 'super_admin' && (
-              <Link href="/admin/dashboard" className="text-blue-400 hover:text-blue-300 p-2.5 bg-black/40 hover:bg-blue-500/10 rounded-xl border border-white/10 hover:border-blue-500/30 transition-all shadow-inner">
+              <Link href="/admin/dashboard" className="text-zinc-400 hover:text-white p-2.5 bg-white/5 hover:bg-white/10 rounded-lg transition-all border border-transparent">
                 <ShieldCheck className="w-4 h-4" />
               </Link>
             )}
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 p-2.5 bg-black/40 hover:bg-red-500/10 rounded-xl border border-white/10 hover:border-red-500/30 transition-all shadow-inner">
+            <button onClick={handleLogout} className="text-zinc-400 hover:text-rose-400 p-2.5 bg-white/5 hover:bg-rose-500/10 rounded-lg transition-all border border-transparent">
               <LogOut className="w-4 h-4" />
             </button>
           </div>
