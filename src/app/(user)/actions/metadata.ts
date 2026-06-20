@@ -16,7 +16,7 @@ export async function processMetadataWithToken(formData: FormData) {
     const userId = formData.get("userId") as string;
     const file = formData.get("file") as File;
     const mode = formData.get("mode") as string; 
-    const imageType = formData.get("imageType") as string || "vector"; // Tipe: vector atau realistic
+    const imageType = formData.get("imageType") as string || "vector";
     const configStr = formData.get("config") as string;
     
     if (!userId || !file || !configStr) throw new Error("Data tidak lengkap.");
@@ -33,82 +33,97 @@ export async function processMetadataWithToken(formData: FormData) {
     if (profileError || !profile) throw new Error("Gagal memverifikasi profil pengguna.");
     if (profile.token_balance <= 0) throw new Error("INSUFFICIENT_TOKENS");
 
-    // Menggunakan API Key Pribadi Anda
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
     const arrayBuffer = await file.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
     let promptText = "";
 
-    // MENGATUR DESKRIPSI ASET BERDASARKAN TIPE GAMBAR DENGAN RUMUS SEO SUPER POWERFUL
-    const assetTypeDescription = imageType === "vector" 
-      ? `a premium commercial vector graphic / illustration asset. 
-         TITLE FORMULA: [Primary Search Keyword/Subject] + [Action/Context] + [Dominant Color/Visual Trait] + [Style: e.g., Flat, Line Art, Isometric] + [Asset Format: e.g., Vector Background, Icon Set, Seamless Pattern, Template] + [Commercial Concept].
-         CRITICAL TITLE SEO RULES:
-         1. FRONT-LOADING: The most critical and high-volume keywords MUST be the first 3-5 words of the title.
-         2. NO FILLER WORDS: Strictly avoid words like "a", "an", "the", "picture of", "illustration of". Make it a dense string of searchable keywords.
-         3. COMMERCIAL INTENT: Always include what the asset can be used for (e.g., landing page, infographic, banner, presentation).
-         Make the title highly descriptive, SEO-optimized, and click-driven for buyers.
-         
-         KEYWORD FORMULA: Prioritize high-search-volume commercial keywords. Sort strictly by importance (most important first). Include: 1. Literal subjects, 2. Synonyms, 3. Actions/Concepts (e.g., success, technology, abstract), 4. Styles (vector, flat, gradient, graphic, design, art), 5. Colors/Themes. 
-         Do NOT use photography terms like 'photo', 'bokeh', 'camera', or 'lens'.`
-      : `a premium realistic commercial photograph / photorealistic image. 
-         TITLE FORMULA: [Main Subject] + [Action/Emotion] + [Setting/Location/Environment] + [Lighting/Time of Day] + [Composition: e.g., Close-up, Portrait, Wide Angle] + [Conceptual Meaning]. Make the title cinematic, highly descriptive, and buyer-focused for maximum SEO discovery.
-         CRITICAL TITLE SEO RULES:
-         1. FRONT-LOADING: The most important subjects must be at the very beginning.
-         2. NO FILLER WORDS: Avoid "a photo of", "image of".
-         KEYWORD FORMULA: Prioritize high-search-volume photography keywords. Include: 1. Core subjects, 2. Synonyms, 3. Concepts/Emotions, 4. Composition/Lighting (e.g., natural light, macro, realistic, authentic), 5. Demographics (if people are present).
-         Do NOT use illustration terms like 'vector', 'flat design', 'drawing', or 'clip art'.`;
-
-    // Fitur Naming bawaan web pribadi
+    // LOGIKA PROMPT BERDASARKAN MODE (Shutterstock, Adobe, Canva, Naming)
     if (mode === "naming") {
+      const namingDescription = imageType === "vector" ? "premium commercial vector graphic" : "premium realistic photograph";
       promptText = `
-        Analyze this image which is ${assetTypeDescription}. 
+        Analyze this image which is a ${namingDescription}. 
         Generate highly relevant, clean, and professional recommendations for naming the raw project folder and the master design file for a microstock workflow.
         
         Requirements:
         - Identify the main subject.
-        - Identify if it is a "set", "bundle", "collection", "pack", or a single element. Strongly emphasize this in the names.
         - "folderName": Must be in lowercase with hyphens (kebab-case).
         - "fileName": Must be in lowercase with underscores (snake_case).
         - "title": A human-readable display title for this asset.
         
         Respond STRICTLY in JSON format with exactly these keys: "title", "folderName", and "fileName".
       `;
-    } else {
-      // Instruksi Utama Adobe / Canva dengan Optimasi SEO Maksimal
+    } else if (mode === "shutterstock") {
       promptText = `
-        Analyze this image which is ${assetTypeDescription} and generate HIGHLY OPTIMIZED metadata for a microstock marketplace (${mode}) to maximize search visibility, buyer discovery, and downloads.
+        Analyze this image (type: ${imageType}) and generate metadata STRICTLY adhering to Shutterstock's Best Practices.
         
-        Requirements:
-        - Title Length: ${config.titleLengthMin} to ${config.titleLengthMax} characters. Ensure the title flows naturally but is packed with powerful, high-volume search terms.
-        - Keywords Count: EXACTLY ${config.keywordsCount} comma-separated keywords.
-        - Concept Context: ${config.conceptContext || 'None'}. If provided, you MUST treat this context as highly important, especially if it describes the parent "set" or core subject of an abstract element.
-        - Negative Keywords to avoid: ${config.negativeKeywords}, white background, isolated on white, transparent background, background.
+        SHUTTERSTOCK CRITICAL RULES FOR TITLE (DESCRIPTION):
+        1. Read like a natural sentence or phrase, NOT a list of keywords. Think of it as a news headline.
+        2. Answer the main questions: Who, What, When, Where, and Why, capturing the mood/emotion.
+        3. Do NOT merely list keywords (e.g., "Dog. Flower. Pattern." is REJECTED).
+        4. Avoid repeating words or phrases.
+        5. Must have perfect English spelling and grammar without special characters.
+        6. Example of Good Title: "Seamless pattern of a Shiba Inu dog with blue, red and pink floral background elements."
         
-        CRITICAL SEO INSTRUCTIONS:
-        - Sort keywords by RELEVANCE and SEARCH VOLUME (put the most important, broad, and high-converting keywords first, followed by specific niche keywords).
-        - Use a mix of literal keywords (what the image physically is) and conceptual keywords (what the image represents or solves, e.g., "freedom", "innovation", "teamwork").
-        - Include trending and commercial variations (e.g., if it's a business vector, include "startup", "corporate", "infographic").
+        SHUTTERSTOCK CRITICAL RULES FOR KEYWORDS:
+        1. Provide EXACTLY ${config.keywordsCount} comma-separated keywords (Max 50).
+        2. Do NOT repeat the same base words or compound words excessively (no keyword spamming). Use a diverse, precise vocabulary.
+        3. Include broader topics, feelings, concepts, or associations.
+        4. Do NOT enter unrelated terms.
+        5. ${imageType === "vector" ? "Strictly no photography terms (photo, camera, bokeh)." : "Strictly no illustration terms (vector, flat design, drawing)."}
+        6. Negative keywords to avoid: ${config.negativeKeywords}.
+        
+        Category: You MUST assign EXACTLY ONE category from this official list ONLY: 
+        "Abstract", "Animals/Wildlife", "Arts", "Backgrounds/Textures", "Beauty/Fashion", "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and drink", "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", "Objects", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", "Sports/Recreation", "Technology", "Transportation", "Vintage".
+        
+        Respond STRICTLY in JSON format with exactly these keys: "title", "keywords", and "category" (as string).
+      `;
+    } else if (mode === "adobe") {
+      promptText = `
+        Analyze this image (type: ${imageType}) and generate highly optimized metadata STRICTLY adhering to Adobe Stock Official Best Practices.
 
-        CRITICAL INSTRUCTION FOR ISOLATED ELEMENTS:
-        If this image is a single element (like a splash, icon, or character), assume it has a transparent background. YOU MUST STRICTLY FORBID the use of any background-related terms (e.g., "white background", "isolated on white", "on white") in both the title and keywords.
-        
-        If the mode is "adobe", you MUST strictly analyze the image and assign the most accurate category numeric code based on this exact Adobe Stock mapping:
+        ADOBE STOCK TITLE RULES:
+        1. Use concise, natural-sounding language that provides details (Who, What, Where, When, Why).
+        2. DO NOT use keyword spamming or list words separated by commas. It must read like a descriptive sentence.
+        3. Length: Ideally around 70 characters, max ${config.titleLengthMax}.
+        4. Describe the core subject matter accurately and literally.
+
+        ADOBE STOCK KEYWORD RULES:
+        1. Quantity: EXACTLY ${config.keywordsCount} comma-separated keywords.
+        2. CRITICAL ORDER: Arrange keywords strictly in order of relevance. The FIRST 10 KEYWORDS are the most important for Adobe search algorithms.
+        3. TOP 10 MANDATE: All important words used in the Title MUST be included within the first 10 keywords.
+        4. Storytelling & Demographics: If people are in the image, include their age (e.g., 20s, 30s, Adult), gender, ethnicity, role, and relationship. 
+        5. If there are NO PEOPLE in the image, you MUST include the keywords "no people" or "nobody".
+        6. Include specific concepts, feelings, and moods.
+        7. Avoid synonym spam (e.g., don't add dog, dogs, canine, canines - just pick the most accurate).
+        8. Negative keywords to avoid: ${config.negativeKeywords}.
+
+        Category: You MUST strictly analyze the image and assign the most accurate category numeric code based on this exact Adobe Stock mapping:
         1: Animals, 2: Buildings and Architecture, 3: Business, 4: Drinks, 5: The Environment, 6: States of Mind, 7: Food, 8: Graphic Resources, 9: Hobbies and Leisure, 10: Industry, 11: Landscapes, 12: Lifestyle, 13: People, 14: Plants and Flowers, 15: Culture and Religion, 16: Science, 17: Social Issues, 18: Sports, 19: Technology, 20: Transport, 21: Travel.
         
-        Respond STRICTLY in JSON format with exactly these keys: "title", "keywords", "description", and "category" (as an integer).
+        Respond STRICTLY in JSON format with exactly these keys: "title", "keywords", "description" (optional), and "category" (as an integer).
+      `;
+    } else {
+       promptText = `
+        Analyze this image which is a commercial ${imageType} asset and generate HIGHLY OPTIMIZED metadata for a microstock marketplace (${mode}).
+        
+        Requirements:
+        - "title": Length ${config.titleLengthMin} to ${config.titleLengthMax} characters. Ensure the title is descriptive and packed with powerful search terms.
+        - "keywords": EXACTLY ${config.keywordsCount} comma-separated keywords.
+        - Concept Context: ${config.conceptContext || 'None'}. 
+        - Negative Keywords to avoid: ${config.negativeKeywords}, white background, isolated on white, transparent background, background.
+        
+        Respond STRICTLY in JSON format with exactly these keys: "title", "keywords".
       `;
     }
 
-    // UPDATE MODEL: Memprioritaskan Gemini 3.1 Pro Preview untuk kualitas maksimal, lalu fallback ke seri Flash
     const modelsToTry = [
       "gemini-3-flash-preview", 
       "gemini-2.5-flash",
       "gemini-2.5-flash-lite",  
       "gemini-2.0-flash", 
-      "gemini-2.0-flash-001", 
-      "gemini-2.0-flash-lite-001"      
+      "gemini-2.0-flash-001"
     ];
 
     let aiResponseText = "";
@@ -143,7 +158,10 @@ export async function processMetadataWithToken(formData: FormData) {
     if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
       cleanJson = cleanJson.substring(startIndex, endIndex + 1);
     } else {
-      cleanJson = cleanJson.replace(/```json/gi, "").replace(/```/g, "").trim();
+      // Penanganan aman untuk mencegah Parsing error: Unterminated regular expression literal
+      const jsonRegex = new RegExp('```json', 'gi');
+      const tickRegex = new RegExp('```', 'g');
+      cleanJson = cleanJson.replace(jsonRegex, "").replace(tickRegex, "").trim();
     }
 
     const metadataResult = JSON.parse(cleanJson);
@@ -151,9 +169,12 @@ export async function processMetadataWithToken(formData: FormData) {
         metadataResult.category = parseInt(metadataResult.category, 10) || 8;
     }
     
-    // Potong Token & Catat Log
     const newTokenBalance = profile.token_balance - 1;
-    const toolNameLog = mode === 'adobe' ? 'adobe_stock_generator' : mode === 'canva' ? 'canva_generator' : 'file_naming_generator';
+    
+    let toolNameLog = 'file_naming_generator';
+    if (mode === 'adobe') toolNameLog = 'adobe_stock_generator';
+    else if (mode === 'canva') toolNameLog = 'canva_generator';
+    else if (mode === 'shutterstock') toolNameLog = 'shutterstock_generator';
 
     await supabaseAdmin.from("profiles").update({ token_balance: newTokenBalance }).eq("id", userId);
     await supabaseAdmin.from("tools_usage").insert({ user_id: userId, tool_name: toolNameLog, tokens_used: 1 });

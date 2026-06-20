@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   UploadCloud, Settings2, Play, AlertCircle, Loader2, 
   Image as ImageIcon, CheckCircle2, Sparkles, Layers, 
-  Download, X, FileCode, Copy, Check, Zap, Activity, ChevronDown, Camera, PenTool
+  Download, X, FileCode, Copy, Check, Zap, Activity, ChevronDown, Camera, PenTool, Grid
 } from "lucide-react";
 import { processMetadataWithToken } from "../actions/metadata";
 
@@ -21,16 +21,15 @@ type ProcessedFile = {
     title: string; 
     keywords: string; 
     description: string; 
-    category?: number;
+    category?: number | string; 
     folderName?: string;
     fileName?: string;
   };
   errorMessage?: string;
 };
 
-type AppMode = "adobe" | "canva" | "naming";
+type AppMode = "adobe" | "shutterstock" | "canva" | "naming";
 
-// Mapping kategori Adobe Stock
 const ADOBE_CATEGORIES: Record<number, string> = {
   1: "Animals", 2: "Buildings and Architecture", 3: "Business", 4: "Drinks",
   5: "The Environment", 6: "States of Mind", 7: "Food", 8: "Graphic Resources",
@@ -39,13 +38,21 @@ const ADOBE_CATEGORIES: Record<number, string> = {
   17: "Social Issues", 18: "Sports", 19: "Technology", 20: "Transport", 21: "Travel"
 };
 
+// Kategori disesuaikan 100% dengan screenshot user
+const SHUTTERSTOCK_CATEGORIES = [
+  "Abstract", "Animals/Wildlife", "Arts", "Backgrounds/Textures", "Beauty/Fashion", 
+  "Buildings/Landmarks", "Business/Finance", "Celebrities", "Education", "Food and drink", 
+  "Healthcare/Medical", "Holidays", "Industrial", "Interiors", "Miscellaneous", "Nature", 
+  "Objects", "Parks/Outdoor", "People", "Religion", "Science", "Signs/Symbols", 
+  "Sports/Recreation", "Technology", "Transportation", "Vintage"
+];
+
 export default function UnifiedMetadataGenerator() {
   const [mode, setMode] = useState<AppMode>("adobe");
   const [userId, setUserId] = useState<string | null>(null);
   const [tokenBalance, setTokenBalance] = useState<number>(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
-  // State untuk membedakan Vektor dan Foto Realistik
   const [imageType, setImageType] = useState<"vector" | "realistic">("vector");
 
   const [config, setConfig] = useState({
@@ -55,6 +62,7 @@ export default function UnifiedMetadataGenerator() {
     conceptContext: "",
     negativeKeywords: "logo, watermark, text",
     delay: 1000, 
+    targetExtension: "auto", 
   });
 
   const [files, setFiles] = useState<ProcessedFile[]>([]);
@@ -72,6 +80,12 @@ export default function UnifiedMetadataGenerator() {
       badge: "bg-rose-500/10 border-rose-500/20 text-rose-400",
       title: "Adobe Stock Engine",
       desc: "Optimasi judul dan 49 keyword SEO khusus portofolio Adobe Stock."
+    },
+    shutterstock: {
+      accent: "text-orange-500",
+      badge: "bg-orange-500/10 border-orange-500/20 text-orange-500",
+      title: "Shutterstock Engine",
+      desc: "Optimasi deskripsi & 50 keyword spesifik standar kurasi Shutterstock."
     },
     canva: {
       accent: "text-cyan-400",
@@ -105,6 +119,8 @@ export default function UnifiedMetadataGenerator() {
     setMode(newMode);
     if (newMode === "adobe") {
       setConfig(prev => ({ ...prev, keywordsCount: 49, titleLengthMax: 100, titleLengthMin: 50, negativeKeywords: "logo, watermark, text" }));
+    } else if (newMode === "shutterstock") {
+      setConfig(prev => ({ ...prev, keywordsCount: 50, titleLengthMax: 200, titleLengthMin: 20, negativeKeywords: "logo, watermark, text, brand" }));
     } else if (newMode === "canva") {
       setConfig(prev => ({ ...prev, keywordsCount: 20, titleLengthMax: 50, negativeKeywords: "logo, watermark, text, brand" }));
     }
@@ -184,7 +200,6 @@ export default function UnifiedMetadataGenerator() {
     setFiles(prev => [...prev, ...newFiles]);
   }, []);
 
-  // Global Paste Listener untuk menangkap screenshot (Ctrl+V)
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -247,7 +262,7 @@ export default function UnifiedMetadataGenerator() {
       formData.append("file", item.file);
       formData.append("mode", mode);
       formData.append("imageType", imageType); 
-      formData.append("config", JSON.stringify(config)); // Hanya menggunakan config murni dari state tanpa manipulasi
+      formData.append("config", JSON.stringify(config));
 
       const result = await processMetadataWithToken(formData);
 
@@ -282,7 +297,6 @@ export default function UnifiedMetadataGenerator() {
     setIsProcessing(false);
   };
 
-  // Trigger processBatch otomatis KHUSUS untuk mode File Naming
   useEffect(() => {
     if (mode === "naming" && !isProcessing) {
       const hasPendingFiles = files.some(f => f.status === "pending");
@@ -298,6 +312,12 @@ export default function UnifiedMetadataGenerator() {
     setFiles([]);
   };
 
+  const getFilenameWithTargetExtension = (originalName: string, targetExt: string) => {
+    if (targetExt === "auto") return originalName;
+    const base = originalName.replace(/\.[^/.]+$/, "");
+    return `${base}.${targetExt}`;
+  };
+
   const handleExport = (e: React.FormEvent) => {
     e.preventDefault();
     const successFiles = files.filter(f => f.status === "success");
@@ -308,22 +328,47 @@ export default function UnifiedMetadataGenerator() {
 
     if (mode === "adobe") {
       const headers = ['Filename', 'Title', 'Keywords', 'Category', 'Releases'];
-      const rows = successFiles.map(f => [
-        escape(f.originalFileName),
-        escape(f.metadata?.title || ''),
-        escape(f.metadata?.keywords || ''),
-        f.metadata?.category || 8, 
-        '""'
-      ]);
+      const rows = successFiles.map(f => {
+        const finalFileName = getFilenameWithTargetExtension(f.originalFileName, config.targetExtension);
+        return [
+          escape(finalFileName),
+          escape(f.metadata?.title || ''),
+          escape(f.metadata?.keywords || ''),
+          f.metadata?.category || 8, 
+          '""'
+        ];
+      });
+      csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    } else if (mode === "shutterstock") {
+      const headers = ['Filename', 'Description', 'Keywords', 'Categories', 'Illustration', 'Mature Content', 'Editorial'];
+      const rows = successFiles.map(f => {
+        const finalFileName = getFilenameWithTargetExtension(f.originalFileName, config.targetExtension);
+        const isIllustration = imageType === 'vector' ? 'Yes' : 'No';
+        
+        // Memastikan fallback kategori jika AI memberikan hasil yang tidak sesuai daftar
+        const aiCategory = String(f.metadata?.category || 'Abstract');
+        const finalCategory = SHUTTERSTOCK_CATEGORIES.includes(aiCategory) ? aiCategory : 'Abstract';
+
+        return [
+          escape(finalFileName),
+          escape(f.metadata?.title || ''), 
+          escape(f.metadata?.keywords || ''),
+          escape(finalCategory),
+          `"${isIllustration}"`,
+          '"No"',
+          '"No"'
+        ];
+      });
       csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     } else if (mode === "canva") {
       const headers = ['filename', 'title', 'keywords', 'Artist', 'locale', 'description'];
       const rows = successFiles.map(f => {
         const keywordsArray = (f.metadata?.keywords || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
         const limitedKeywords = keywordsArray.slice(0, 20).join(', ');
+        const finalFileName = getFilenameWithTargetExtension(f.originalFileName, config.targetExtension);
         
         return [
-          escape(f.originalFileName),
+          escape(finalFileName),
           escape(f.metadata?.title || ''),
           escape(limitedKeywords),
           escape(artistName || ''), 
@@ -364,7 +409,6 @@ export default function UnifiedMetadataGenerator() {
       transition={{ duration: 0.4 }}
       className="max-w-7xl mx-auto space-y-8 relative z-10 pb-10"
     >
-      {/* TABS SELECTOR */}
       <div className="flex bg-black/40 border border-white/5 p-1 rounded-xl w-fit shadow-inner overflow-x-auto custom-scrollbar">
         <button
           onClick={() => handleModeChange("adobe")}
@@ -374,6 +418,15 @@ export default function UnifiedMetadataGenerator() {
         >
           <Layers className="w-4 h-4" />
           Adobe Stock
+        </button>
+        <button
+          onClick={() => handleModeChange("shutterstock")}
+          className={`px-6 py-2 rounded-lg text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+            mode === "shutterstock" ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Grid className="w-4 h-4" />
+          Shutterstock
         </button>
         <button
           onClick={() => handleModeChange("canva")}
@@ -395,7 +448,6 @@ export default function UnifiedMetadataGenerator() {
         </button>
       </div>
 
-      {/* HEADER PANEL */}
       <div className="relative overflow-hidden rounded-[2rem] bg-white/[0.01] border border-white/5">
         <div className="relative p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
@@ -423,7 +475,6 @@ export default function UnifiedMetadataGenerator() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* KOLOM KIRI: KONFIGURASI */}
         <div className={`lg:col-span-4 bg-white/[0.01] border border-white/5 rounded-3xl p-6 transition-all duration-500 ${mode === 'naming' ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
             <div className="flex items-center gap-2.5">
@@ -436,8 +487,6 @@ export default function UnifiedMetadataGenerator() {
           </div>
 
           <div className="space-y-5">
-
-            {/* IMAGE TYPE TOGGLE */}
             <div className="space-y-1.5 pb-2">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                 <Camera size={14}/> Jenis Aset
@@ -464,6 +513,22 @@ export default function UnifiedMetadataGenerator() {
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Target Extension Override</label>
+              <select 
+                value={config.targetExtension} 
+                onChange={e => setConfig({...config, targetExtension: e.target.value})} 
+                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-semibold text-zinc-200 focus:outline-none focus:border-white/20 transition-all cursor-pointer appearance-none"
+              >
+                <option value="auto">Auto (Bawaan File)</option>
+                <option value="eps">.eps (Master Vektor)</option>
+                <option value="jpg">.jpg (Foto/Raster)</option>
+                <option value="png">.png (Raster Transparan)</option>
+                <option value="svg">.svg (Vektor SVG)</option>
+              </select>
+              <p className="text-[10px] text-zinc-600 font-medium pt-1">Ekstensi otomatis terganti saat di-export ke CSV.</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Min Length</label>
@@ -478,7 +543,6 @@ export default function UnifiedMetadataGenerator() {
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Target Keywords</label>
               <input type="number" value={config.keywordsCount} onChange={e => setConfig({...config, keywordsCount: Number(e.target.value)})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-white/20 transition-all" />
-              {mode === "canva" && <p className="text-[10px] text-zinc-600 font-medium">Max 20 recommended for Canva.</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -509,7 +573,6 @@ export default function UnifiedMetadataGenerator() {
           </div>
         </div>
 
-        {/* KOLOM KANAN: WORKSPACE */}
         <div className="lg:col-span-8 space-y-6">
           <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6">
             <div className="flex flex-wrap items-center justify-between mb-5 gap-4">
@@ -587,12 +650,10 @@ export default function UnifiedMetadataGenerator() {
             )}
           </div>
 
-          {/* LIST HASIL */}
           <div className="space-y-4">
             {files.map((file) => (
               <motion.div key={file.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row gap-5 p-5 border border-white/5 rounded-2xl bg-white/[0.01] hover:bg-white/[0.02] transition-colors group">
                 
-                {/* Image Preview Container */}
                 <div className="w-full sm:w-32 h-32 shrink-0 rounded-xl overflow-hidden border border-white/5 bg-black/40 flex items-center justify-center relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={file.previewUrl} alt="preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -608,7 +669,6 @@ export default function UnifiedMetadataGenerator() {
                   )}
                 </div>
 
-                {/* Content Container */}
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
                   {file.status === "pending" && <p className="text-zinc-500 font-medium text-xs flex items-center gap-2"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span> Queued for processing...</p>}
                   {file.status === "error" && <p className="text-rose-400 font-medium text-xs flex items-center gap-2 bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20 w-fit"><AlertCircle className="w-3.5 h-3.5"/> {file.errorMessage}</p>}
@@ -632,10 +692,9 @@ export default function UnifiedMetadataGenerator() {
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {/* Title - Editable */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between px-1">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Generated Title</span>
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Generated Title / Description</span>
                               <span className="text-[9px] font-mono font-medium text-zinc-500 bg-black/40 px-1.5 py-0.5 rounded border border-white/5">{(file.metadata?.title || "").length} chars</span>
                             </div>
                             <textarea 
@@ -645,7 +704,6 @@ export default function UnifiedMetadataGenerator() {
                             />
                           </div>
                           
-                          {/* Keywords - Editable */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between px-1">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">SEO Keywords</span>
@@ -658,7 +716,6 @@ export default function UnifiedMetadataGenerator() {
                             />
                           </div>
 
-                          {/* Editable Category Dropdown (Khusus Adobe) */}
                           {mode === "adobe" && (
                             <div className="space-y-1.5 pt-1">
                               <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">AI Category Match</span>
@@ -683,6 +740,31 @@ export default function UnifiedMetadataGenerator() {
                               </div>
                             </div>
                           )}
+
+                          {mode === "shutterstock" && (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">Shutterstock Category</span>
+                              <div className="relative group/select w-fit">
+                                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
+                                  <Grid className="w-3.5 h-3.5 text-zinc-500" />
+                                </div>
+                                <select 
+                                  value={file.metadata?.category || "Abstract"}
+                                  onChange={(e) => updateMetadata(file.id, "category", e.target.value)}
+                                  className="w-full min-w-[200px] bg-white/5 border border-white/5 pl-9 pr-8 py-2 rounded-lg text-xs font-bold text-zinc-300 outline-none hover:bg-white/10 focus:border-white/20 transition-all appearance-none cursor-pointer relative z-0"
+                                >
+                                  {SHUTTERSTOCK_CATEGORIES.map((catName) => (
+                                    <option key={catName} value={catName} className="bg-[#121212] text-zinc-200 font-medium">
+                                      {catName}
+                                    </option>
+                                  ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
+                                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover/select:text-zinc-300 transition-colors" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -694,7 +776,6 @@ export default function UnifiedMetadataGenerator() {
         </div>
       </div>
 
-      {/* MODAL EXPORT */}
       <AnimatePresence>
         {isExportModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -740,7 +821,6 @@ export default function UnifiedMetadataGenerator() {
         )}
       </AnimatePresence>
 
-      {/* ALERT TOKEN */}
       <AnimatePresence>
         {showTokenAlert && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
