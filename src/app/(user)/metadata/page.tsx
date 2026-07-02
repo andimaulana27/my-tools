@@ -24,6 +24,8 @@ type ProcessedFile = {
     category?: number | string; 
     folderName?: string;
     fileName?: string;
+    isAiGenerative?: boolean;
+    hasPeople?: boolean;
   };
   errorMessage?: string;
 };
@@ -267,10 +269,28 @@ export default function UnifiedMetadataGenerator() {
       const result = await processMetadataWithToken(formData);
 
       if (result.success) {
+        let finalMetadata = result.metadata;
+
+        // Otomatisasi deteksi AI Generative & Keberadaan Manusia untuk Adobe Stock Realistic Photo
+        if (finalMetadata && mode === "adobe" && imageType === "realistic") {
+          const textToAnalyze = `${finalMetadata.title} ${finalMetadata.keywords}`.toLowerCase();
+          const peopleKeywords = [
+            "people", "person", "man", "woman", "couple", "senior", "child", "girl", "boy", 
+            "crowd", "portrait", "face", "model", "human", "family", "group of people"
+          ];
+          const hasPeopleDetected = peopleKeywords.some(word => textToAnalyze.includes(word));
+
+          finalMetadata = {
+            ...finalMetadata,
+            isAiGenerative: finalMetadata.isAiGenerative ?? true,
+            hasPeople: finalMetadata.hasPeople ?? hasPeopleDetected
+          };
+        }
+
         setFiles(prev => prev.map(f => f.id === item.id ? { 
           ...f, 
           status: "success", 
-          metadata: result.metadata 
+          metadata: finalMetadata 
         } : f));
         
         currentBalance = result.newTokenBalance ?? currentBalance;
@@ -717,27 +737,70 @@ export default function UnifiedMetadataGenerator() {
                           </div>
 
                           {mode === "adobe" && (
-                            <div className="space-y-1.5 pt-1">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">AI Category Match</span>
-                              <div className="relative group/select w-fit">
-                                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
-                                  <Layers className="w-3.5 h-3.5 text-zinc-500" />
-                                </div>
-                                <select 
-                                  value={file.metadata?.category || 8}
-                                  onChange={(e) => updateMetadata(file.id, "category", parseInt(e.target.value))}
-                                  className="w-full bg-white/5 border border-white/5 pl-9 pr-8 py-2 rounded-lg text-xs font-bold text-zinc-300 outline-none hover:bg-white/10 focus:border-white/20 transition-all appearance-none cursor-pointer relative z-0"
-                                >
-                                  {Object.entries(ADOBE_CATEGORIES).map(([id, name]) => (
-                                    <option key={id} value={id} className="bg-[#121212] text-zinc-200 font-medium">
-                                      {name} (ID: {id})
-                                    </option>
-                                  ))}
-                                </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
-                                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover/select:text-zinc-300 transition-colors" />
+                            <div className="space-y-4 pt-1">
+                              <div className="space-y-1.5">
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">AI Category Match</span>
+                                <div className="relative group/select w-fit">
+                                  <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
+                                    <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                                  </div>
+                                  <select 
+                                    value={file.metadata?.category || 8}
+                                    onChange={(e) => updateMetadata(file.id, "category", parseInt(e.target.value))}
+                                    className="w-full bg-white/5 border border-white/5 pl-9 pr-8 py-2 rounded-lg text-xs font-bold text-zinc-300 outline-none hover:bg-white/10 focus:border-white/20 transition-all appearance-none cursor-pointer relative z-0"
+                                  >
+                                    {Object.entries(ADOBE_CATEGORIES).map(([id, name]) => (
+                                      <option key={id} value={id} className="bg-[#121212] text-zinc-200 font-medium">
+                                        {name} (ID: {id})
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
+                                    <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover/select:text-zinc-300 transition-colors" />
+                                  </div>
                                 </div>
                               </div>
+
+                              {/* Tampilan Otomatis Checklist AI Generative & People untuk Realistic Photo */}
+                              {imageType === "realistic" && (
+                                <div className="bg-black/30 border border-white/5 rounded-xl p-3.5 space-y-3 mt-2">
+                                  <div className="flex items-start gap-2.5">
+                                    <input 
+                                      type="checkbox"
+                                      id={`ai-gen-${file.id}`}
+                                      checked={file.metadata?.isAiGenerative ?? true}
+                                      onChange={(e) => updateMetadata(file.id, "isAiGenerative", e.target.checked)}
+                                      className="mt-0.5 h-3.5 w-3.5 rounded border-white/10 bg-black/40 text-zinc-100 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                    />
+                                    <label htmlFor={`ai-gen-${file.id}`} className="text-xs font-semibold text-zinc-300 cursor-pointer select-none">
+                                      Created using generative AI tools
+                                    </label>
+                                  </div>
+
+                                  <div className="flex items-start gap-2.5 border-t border-white/5 pt-2.5">
+                                    <input 
+                                      type="checkbox"
+                                      id={`ai-people-${file.id}`}
+                                      checked={file.metadata?.hasPeople ?? false}
+                                      onChange={(e) => updateMetadata(file.id, "hasPeople", e.target.checked)}
+                                      className="mt-0.5 h-3.5 w-3.5 rounded border-white/10 bg-black/40 text-zinc-100 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                    />
+                                    <div className="flex flex-col">
+                                      <label htmlFor={`ai-people-${file.id}`} className="text-xs font-semibold text-zinc-300 cursor-pointer select-none flex items-center gap-2">
+                                        People and Property are fictional
+                                        {file.metadata?.hasPeople && (
+                                          <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                                            Auto-Detected
+                                          </span>
+                                        )}
+                                      </label>
+                                      <p className="text-[10px] text-zinc-500 mt-0.5 leading-normal">
+                                        Aktif otomatis jika mendeteksi wajah/manusia dalam metadata. Kosong jika hanya mockup/objek.
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
 
