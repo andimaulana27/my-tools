@@ -1,8 +1,26 @@
-// src/app/(user)/actions/video.ts
 "use server";
 
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
+import {
+  catalogForPrompt,
+  clampDuration,
+  fingerprintLabel,
+  isValidEngine,
+  preferredTemplate,
+  uniquenessKey,
+} from "@/lib/video-engine/catalog";
+import { pickStockPrompt, promptBankForGemini } from "@/lib/video-engine/prompt-bank";
+import {
+  appendUsedPrompt,
+  countUsedPrompts,
+  isDuplicatePrompt,
+  listUsedPromptTexts,
+  listUsedUniquenessKeys,
+  mergeAvoidLists,
+} from "@/lib/video-engine/prompt-history";
+import { ensureUniqueSpec, normalizeSpec } from "@/lib/video-engine/uniqueness";
+import type { VideoEngineId, VideoSpec } from "@/lib/video-engine/types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -11,78 +29,132 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-// ------------------------------------------------------------------
-// FUNGSI 1: GENERATE MAGIC VIDEO IDEA
-// ------------------------------------------------------------------
+function parseJsonObject(raw: string): Record<string, unknown> {
+  const cleaned = raw
+    .replace(/```json/gi, "")
+    .replace(/```javascript/gi, "")
+    .replace(/```js/gi, "")
+    .replace(/```/g, "")
+    .trim();
+  return JSON.parse(cleaned) as Record<string, unknown>;
+}
+
+function randomSeed(): number {
+  return Math.floor(Math.random() * 1_000_000_000) || 1;
+}
+
 export async function generateMagicVideoIdeaFromGemini(
-  engine: string, 
-  style: string, 
-  shape: string, 
-  recentIdeas: string[] = []
+  engine: string,
+  style: string,
+  shape: string,
+  recentIdeas: string[] = [],
+  userId?: string | null
 ) {
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new Error("GEMINI_API_KEY belum dikonfigurasi di server.");
 
     const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+    const randomDuration = clampDuration(Math.floor(Math.random() * (16 - 8 + 1)) + 8);
 
-    const randomDuration = Math.floor(Math.random() * (20 - 8 + 1)) + 8; 
+    const storedPrompts = await listUsedPromptTexts(userId);
+    const avoidPrompts = mergeAvoidLists(storedPrompts, recentIdeas);
 
-    const avoidInstruction = recentIdeas.length > 0
-       ? `\nCRITICAL RULE: DO NOT generate any concept, subject, or prompt that is similar to these previously generated ideas:\n- ${recentIdeas.join('\n- ')}\n\nYou MUST provide a completely fresh and vastly different concept to prevent Adobe Stock rejection for similarity.`
-       : "";
+    const bankHit = pickStockPrompt(engine, style, shape, avoidPrompts);
+    const bankExamples = promptBankForGemini(engine, style, shape);
+    const avoidInstruction = avoidPrompts.length > 0
+      ? `\nCRITICAL RULE: DO NOT generate any concept similar to these previously USED prompts:\n- ${avoidPrompts.join("\n- ")}\nThe new idea MUST be a different commercial use-case, material world, and composition.`
+      : "";
 
-    const systemInstruction = `You are a creative director for a top-selling Adobe Stock video contributor. Your goal is to generate ONE highly unique, commercially viable, and visually stunning base idea prompt for a generative art video background.
-    
-    The animation MUST STRICTLY follow the user's manually selected combination:
-    - Coding Engine: ${engine}
-    - Visual Style: ${style}
-    - Main Shape/Element: ${shape}
-    
-    Target Hardware Optimization: The rendering will be done on an NVIDIA RTX 3060. Therefore, the concept MUST be highly detailed, utilizing complex particle systems, dense geometries, advanced shaders, or rich volumetric concepts that look expensive and premium.
+    const systemInstruction = `You are a creative director for top-selling Adobe Stock motion backgrounds.
+Create ONE unique, commercially useful seamless-loop concept.
 
-    ${avoidInstruction}
-    
-    Rule:
-    1. Keep the 'prompt' concise, max 40 words.
-    2. Emphasize extremely high commercial value (e.g., modern corporate background, high-end sci-fi HUD, luxury vj visuals, futuristic AI data streams) that fits the selected style and shape.
-    3. Respond ONLY with the final prompt text. Do not use quotes, do not use JSON format, do not add any other formatting.`;
+Locked user choices:
+- Engine: ${engine}
+- Style: ${style}
+- Shape/element: ${shape}
+
+Seed commercial concept to vary (keep the same buyer category, change lighting/material emphasis so it is not a duplicate):
+${bankHit ? `${bankHit.buyer}: ${bankHit.prompt}` : "Invent a premium concept that a real buyer would license."}
+
+Other proven sellers in this neighborhood:
+${bankExamples || "- luxury studio materials, corporate HUD, wellness water, fashion fabric"}
+
+The renderer already has PBR materials, HDR-like studio lighting, procedural textures, bloom, and seeded uniqueness.
+Your job is the CONCEPT, not shader math. Never write neon particle spam.
+
+${avoidInstruction}
+
+Rules:
+1. Prompt max 40 words.
+2. Mention material/texture feel (marble, ice, brushed metal, velvet, carbon, iridescent, etc.) when it fits.
+3. Name a buyer use (jewelry hero, spa, automotive, architecture title bed, skincare, etc.).
+4. Respond ONLY with the prompt text. No quotes, no JSON.`;
 
     const response = await ai.models.generateContent({
-         model: "gemini-3-flash-preview", // Menggunakan Gemini 3 Flash Preview
-         contents: [{ role: "user", parts: [{ text: systemInstruction }] }]
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: systemInstruction }] }],
     });
 
-    const generatedPrompt = response.text ? response.text.replace(/["']/g, "").trim() : `Seamless looping ${style} animation with ${shape}`;
-    
-    return { 
-      success: true, 
+    let generatedPrompt = response.text
+      ? response.text.replace(/["']/g, "").trim()
+      : bankHit?.prompt || `Seamless looping ${style} ${shape} with premium studio materials`;
+
+    if (isDuplicatePrompt(generatedPrompt, avoidPrompts)) {
+      const alt = pickStockPrompt(engine, style, shape, [...avoidPrompts, generatedPrompt]);
+      generatedPrompt = alt?.prompt || `${generatedPrompt} unique ${style} ${shape} variation`;
+    }
+
+    return {
+      success: true,
       idea: {
         duration: randomDuration,
-        prompt: generatedPrompt
-      }
+        prompt: generatedPrompt,
+      },
     };
-
   } catch (err: unknown) {
     console.error("Failed to generate magic video idea", err);
+    const storedPrompts = await listUsedPromptTexts(userId).catch(() => [] as string[]);
+    const fallback = pickStockPrompt(engine, style, shape, mergeAvoidLists(storedPrompts, recentIdeas));
+    if (fallback) {
+      return {
+        success: true,
+        idea: {
+          duration: clampDuration(Math.floor(Math.random() * (16 - 8 + 1)) + 8),
+          prompt: fallback.prompt,
+        },
+      };
+    }
     return { success: false, error: err instanceof Error ? err.message : "Gagal memuat ide dari Gemini" };
   }
 }
 
-// ------------------------------------------------------------------
-// FUNGSI 2: GENERATOR KODE VIDEO & SEO (MATH & AESTHETIC GUARDRAILS)
-// ------------------------------------------------------------------
 export async function generateVideoCodeWithToken(formData: FormData) {
   try {
     const userId = formData.get("userId") as string;
     const prompt = formData.get("prompt") as string;
-    
-    const engine = formData.get("engine") as string || "threejs";
-    const style = formData.get("style") as string || "abstract";
-    const shape = formData.get("shape") as string || "geometric";
-    const duration = formData.get("duration") as string || "10";
-    
+    const engineRaw = (formData.get("engine") as string) || "threejs";
+    const style = (formData.get("style") as string) || "abstract";
+    const shape = (formData.get("shape") as string) || "geometric";
+    const duration = clampDuration(Number(formData.get("duration") || 10));
+    const usedKeysRaw = (formData.get("usedKeys") as string) || "[]";
+
     if (!userId || !prompt) throw new Error("Data tidak lengkap.");
+    if (!isValidEngine(engineRaw)) throw new Error("Engine tidak valid.");
+    const engine: VideoEngineId = engineRaw;
+
+    let usedKeys: string[] = [];
+    try {
+      const parsed = JSON.parse(usedKeysRaw);
+      if (Array.isArray(parsed)) usedKeys = parsed.map(String).slice(-160);
+    } catch {
+      usedKeys = [];
+    }
+
+    const storedKeys = await listUsedUniquenessKeys(userId);
+    const storedPrompts = await listUsedPromptTexts(userId);
+    usedKeys = Array.from(new Set([...storedKeys, ...usedKeys]));
+    const promptAlreadyUsed = isDuplicatePrompt(prompt, storedPrompts);
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -94,102 +166,178 @@ export async function generateVideoCodeWithToken(formData: FormData) {
     if (profile.token_balance <= 0) throw new Error("INSUFFICIENT_TOKENS");
 
     const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const fallback: VideoSpec = {
+      engine,
+      style,
+      shape,
+      template: preferredTemplate(engine, shape),
+      material: style === "luxury" ? "gold-luxury" : style === "neon" ? "neon-emissive" : "iridescent",
+      palette: "obsidian-gold",
+      camera: "orbit-hero",
+      seed: randomSeed(),
+      duration,
+      prompt,
+    };
 
-    let engineInstructions = "";
-    if (engine === "pixijs") {
-        engineInstructions = `
-          Library: PixiJS (v7). 
-          Initialization: 
-          const app = new PIXI.Application({ width: window.innerWidth, height: window.innerHeight, backgroundColor: 0x000000, resolution: window.RENDER_SCALE || 1, autoDensity: true, preserveDrawingBuffer: true, backgroundAlpha: 1, clearBeforeRender: true });
-          document.body.appendChild(app.view);
-          Use PIXI.Ticker to animate.
-          CRITICAL FOR PIXI SHADERS: Always use 'varying vec2 vTextureCoord;' and 'vec2 uv = vTextureCoord;' to map coordinates perfectly without breaking resolution scaling.
-        `;
-    } else if (engine === "threejs") {
-        engineInstructions = `
-          Library: Three.js (r128). 
-          Initialization: Setup Scene, PerspectiveCamera, WebGLRenderer.
-          CRITICAL COLOR FIX: 
-          const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, alpha: false, premultipliedAlpha: false });
-          renderer.setPixelRatio(window.RENDER_SCALE || 1);
-          renderer.setClearColor(0x000000, 1);
-          renderer.outputEncoding = THREE.sRGBEncoding;
-          document.body.appendChild(renderer.domElement);
-          Use requestAnimationFrame to animate.
-        `;
-    } else if (engine === "p5js") {
-        engineInstructions = `
-          Library: p5.js.
-          Call createCanvas(windowWidth, windowHeight) inside setup().
-          CRITICAL: Call pixelDensity(window.RENDER_SCALE || 1) inside setup().
-          CRITICAL: Call background(0) inside both setup() and draw() to prevent ghosting. Avoid clear().
-        `;
-    }
+    const avoidKeys = usedKeys.length
+      ? `NEVER reuse these uniqueness keys (engine|template|material|palette):\n${usedKeys.slice(-120).join("\n")}`
+      : "No previous keys.";
+    const avoidPrompts = storedPrompts.length
+      ? `NEVER reuse or lightly rephrase these already produced prompts:\n- ${mergeAvoidLists(storedPrompts, []).join("\n- ")}`
+      : "";
 
-    // UPDATE BESAR: Pagar Logika Matematika dan Pencegahan Hallusinasi AI
-    const systemPrompt = `
-      You are an elite creative coder (Expert in ${engine} and GLSL) and an SEO expert for Adobe Stock.
-      
-      ${engineInstructions}
-      
-      CRITICAL MATH & AESTHETIC GUARDRAILS (PREVENT VISUAL BUGS):
-      1. MATCH THE VIBE TO MATH: If the prompt describes "liquid", "smooth", "silky", or "elegant", you MUST use LOW frequency noise/multipliers (e.g., p * 1.0 to p * 5.0). NEVER use high frequencies (e.g., p * 100.0) for smooth surfaces, as it causes ugly pixelated TV static.
-      2. PREVENT BLACK SCREENS (GLSL STRICTNESS): In shaders, NEVER mix floats and integers. Always add '.0' to whole numbers (e.g., write 'vec3(100.0)' instead of 'vec3(100)').
-      3. SEAMLESS LOOP: The animation MUST PERFECTLY REPEAT EVERY ${duration} SECONDS. Use Math.sin((time / ${duration}) * Math.PI * 2) or equivalent angle math in shaders.
-      4. NO CHEAP NOISE: Avoid pure 'Math.random()' pixel noise. Use proper easing, Fractal Brownian Motion (FBM), or Signed Distance Fields (SDF) for premium 4K quality.
-      5. TARGET HARDWARE (RTX 3060): Render high-quality specular highlights (Phong/Blinn-Phong), glowing post-processing, and smooth gradients. Ensure it looks expensive and cinematic.
-      
-      Visual Style: ${style}
-      Main Shape/Element: ${shape}
-      User Prompt Context: ${prompt}
-      
-      CRITICAL OUTPUT FORMAT:
-      You MUST respond ONLY with a VALID JSON object. Do NOT wrap it in a markdown block (no \`\`\`json). The JSON must have exactly these keys:
-      {
-        "code": "Raw executable JavaScript/GLSL code here. Escape quotes properly.",
-        "title": "Highly commercial, SEO-friendly title for Adobe Stock (max 150 chars)",
-        "keywords": "Comma-separated list of exactly 45 highly relevant microstock keywords",
-        "category": "Numeric ID of the relevant Adobe Stock category (e.g., '8' or '19')"
-      }
-    `;
+    const systemPrompt = `You are an Adobe Stock motion-graphics director and SEO specialist.
+The video is rendered by a locked premium runtime (Three.js r170 PBR / PixiJS textures / p5.js looping noise).
+You do NOT write JavaScript or GLSL. You ONLY pick a unique spec and write metadata.
+
+User lock:
+- Engine: ${engine}
+- Style: ${style}
+- Shape: ${shape}
+- Duration: ${duration} seconds
+- Concept: ${prompt}
+
+Catalog:
+${catalogForPrompt(engine)}
+
+Preferred template for this shape: ${fallback.template}
+
+${avoidKeys}
+
+${avoidPrompts}
+
+Adobe Stock rules you must obey:
+- Distinct concept, not a color tweak of a previous clip.
+- No artist names, brands, celebrities, or IP.
+- Title commercial and specific (what the buyer uses it for).
+- Exactly 45 comma-separated keywords.
+- Category numeric ID (Graphic Resources=8, Technology=19, Business=3, etc.)
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "template": "one catalog template id",
+  "material": "one catalog material id",
+  "palette": "one catalog palette id",
+  "camera": "one catalog camera id",
+  "seed": 12345678,
+  "title": "SEO title max 150 chars",
+  "keywords": "45 comma-separated keywords",
+  "category": "8"
+}`;
 
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", // Pastikan versi model benar
-        contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
+      model: "gemini-3-flash-preview",
+      contents: [{ role: "user", parts: [{ text: systemPrompt }] }],
     });
 
-    let aiOutput = response.text || "{}";
-    
-    // Mencegah error parsing jika AI membandel menaruh markdown
-    aiOutput = aiOutput
-      .replace(new RegExp('```json', 'gi'), "")
-      .replace(new RegExp('```javascript', 'gi'), "")
-      .replace(new RegExp('```js', 'gi'), "")
-      .replace(new RegExp('```', 'g'), "")
-      .trim();
-    
-    const parsedData = JSON.parse(aiOutput);
-    
-    const generatedCode = parsedData.code || "";
-    const generatedTitle = parsedData.title || "";
-    const generatedKeywords = parsedData.keywords || "";
-    const generatedCategory = parsedData.category || "8";
+    const parsed = parseJsonObject(response.text || "{}");
+    const normalized = normalizeSpec(
+      {
+        engine,
+        style,
+        shape,
+        template: String(parsed.template || ""),
+        material: String(parsed.material || ""),
+        palette: String(parsed.palette || ""),
+        camera: String(parsed.camera || ""),
+        seed: Number(parsed.seed),
+        duration,
+        prompt,
+      },
+      fallback
+    );
+
+    const unique = ensureUniqueSpec(normalized, usedKeys);
+
+    const generatedTitle = String(parsed.title || "").trim().slice(0, 200);
+    const generatedKeywords = String(parsed.keywords || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 49)
+      .join(",");
+    const generatedCategory = String(parsed.category || "8").replace(/\D/g, "") || "8";
 
     const newTokenBalance = profile.token_balance - 1;
     await supabaseAdmin.from("profiles").update({ token_balance: newTokenBalance }).eq("id", userId);
-    
-    await supabaseAdmin.from("tools_usage").insert({ user_id: userId, tool_name: 'video_engine_generator', tokens_used: 1 });
+    await supabaseAdmin.from("tools_usage").insert({
+      user_id: userId,
+      tool_name: "video_engine_generator",
+      tokens_used: 1,
+    });
 
-    return { 
-      success: true, 
-      code: generatedCode, 
+    const uniqueKey = uniquenessKey(unique.spec);
+    let historyCount = 0;
+    try {
+      historyCount = await appendUsedPrompt({
+        userId,
+        prompt,
+        engine,
+        style,
+        shape,
+        template: unique.spec.template,
+        material: unique.spec.material,
+        palette: unique.spec.palette,
+        camera: unique.spec.camera,
+        uniquenessKey: uniqueKey,
+        title: generatedTitle,
+      });
+    } catch (historyErr) {
+      console.error("Failed to append prompt history", historyErr);
+    }
+
+    const duplicateNote = promptAlreadyUsed
+      ? "Prompt ini sudah ada di riwayat. Spec divariasikan supaya tidak duplikat visual."
+      : "";
+    const combinedNote = [unique.note, duplicateNote].filter(Boolean).join(" ");
+
+    return {
+      success: true,
+      spec: unique.spec,
       title: generatedTitle,
       keywords: generatedKeywords,
       category: generatedCategory,
-      newTokenBalance 
+      fingerprint: fingerprintLabel(unique.spec),
+      uniquenessKey: uniqueKey,
+      adjusted: unique.adjusted || promptAlreadyUsed,
+      note: combinedNote,
+      historyCount,
+      newTokenBalance,
     };
-
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : "Terjadi kesalahan internal AI atau parsing JSON gagal. Coba generate ulang." };
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Terjadi kesalahan internal AI atau parsing JSON gagal. Coba generate ulang.",
+    };
+  }
+}
+
+export async function getVideoPromptHistoryCount(userId?: string | null) {
+  try {
+    const count = await countUsedPrompts(userId);
+    return { success: true, count };
+  } catch {
+    return { success: true, count: 0 };
+  }
+}
+
+export async function recordVideoSpecUse(input: {
+  userId: string;
+  prompt: string;
+  engine: string;
+  style: string;
+  shape: string;
+  template: string;
+  material: string;
+  palette: string;
+  camera: string;
+  uniquenessKey: string;
+  title: string;
+}) {
+  try {
+    const historyCount = await appendUsedPrompt(input);
+    return { success: true, historyCount };
+  } catch (err: unknown) {
+    return { success: false, error: err instanceof Error ? err.message : "Gagal menyimpan riwayat prompt." };
   }
 }

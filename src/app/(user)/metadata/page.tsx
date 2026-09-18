@@ -10,6 +10,7 @@ import {
   Download, X, FileCode, Copy, Check, Zap, Activity, ChevronDown, Camera, PenTool, Grid
 } from "lucide-react";
 import { processMetadataWithToken } from "../actions/metadata";
+import { PageHeading, QuotaMeta } from "@/components/ui/PageHeading";
 
 type ProcessedFile = {
   id: string;
@@ -78,26 +79,26 @@ export default function UnifiedMetadataGenerator() {
 
   const theme = {
     adobe: {
-      accent: "text-rose-400",
-      badge: "bg-rose-500/10 border-rose-500/20 text-rose-400",
+      accent: "text-accent",
+      badge: "bg-wash border-line text-accent",
       title: "Adobe Stock Engine",
       desc: "Optimasi judul dan 49 keyword SEO khusus portofolio Adobe Stock."
     },
     shutterstock: {
-      accent: "text-orange-500",
-      badge: "bg-orange-500/10 border-orange-500/20 text-orange-500",
+      accent: "text-accent",
+      badge: "bg-wash border-line text-accent",
       title: "Shutterstock Engine",
       desc: "Optimasi deskripsi & 50 keyword spesifik standar kurasi Shutterstock."
     },
     canva: {
-      accent: "text-cyan-400",
-      badge: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400",
+      accent: "text-accent",
+      badge: "bg-wash border-line text-accent",
       title: "Canva Metadata Engine",
       desc: "Rekomendasi deskripsi dan keyword elemen sesuai standar Canva Creator."
     },
     naming: {
-      accent: "text-indigo-400",
-      badge: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+      accent: "text-accent",
+      badge: "bg-wash border-line text-accent",
       title: "File Naming Recommender",
       desc: "Analisis cerdas untuk penamaan folder project dan file master mentahan."
     }
@@ -429,104 +430,74 @@ export default function UnifiedMetadataGenerator() {
       transition={{ duration: 0.4 }}
       className="max-w-7xl mx-auto space-y-8 relative z-10 pb-10"
     >
-      <div className="flex bg-black/40 border border-white/5 p-1 rounded-xl w-fit shadow-inner overflow-x-auto custom-scrollbar">
+      <div className="flex w-fit overflow-x-auto border border-line">
         <button
           onClick={() => handleModeChange("adobe")}
-          className={`px-6 py-2 rounded-lg text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-            mode === "adobe" ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-          }`}
+          className={`px-6 py-2 text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${ mode === "adobe" ? "bg-btn-bg text-btn-fg " : "text-text-muted transition-colors duration-hover hover:bg-wash hover:text-text" }`}
         >
           <Layers className="w-4 h-4" />
           Adobe Stock
         </button>
         <button
           onClick={() => handleModeChange("shutterstock")}
-          className={`px-6 py-2 rounded-lg text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-            mode === "shutterstock" ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-          }`}
+          className={`px-6 py-2 text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${ mode === "shutterstock" ? "bg-btn-bg text-btn-fg " : "text-text-muted transition-colors duration-hover hover:bg-wash hover:text-text" }`}
         >
           <Grid className="w-4 h-4" />
           Shutterstock
         </button>
         <button
           onClick={() => handleModeChange("canva")}
-          className={`px-6 py-2 rounded-lg text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-            mode === "canva" ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-          }`}
+          className={`px-6 py-2 text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${ mode === "canva" ? "bg-btn-bg text-btn-fg " : "text-text-muted transition-colors duration-hover hover:bg-wash hover:text-text" }`}
         >
           <Sparkles className="w-4 h-4" />
           Canva
         </button>
         <button 
           onClick={() => handleModeChange("naming")} 
-          className={`px-6 py-2 rounded-lg text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
-            mode === "naming" ? "bg-white/10 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-          }`}
+          className={`px-6 py-2 text-[13px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${ mode === "naming" ? "bg-btn-bg text-btn-fg " : "text-text-muted transition-colors duration-hover hover:bg-wash hover:text-text" }`}
         >
           <FileCode className="w-4 h-4" /> 
           File Naming
         </button>
       </div>
 
-      <div className="relative overflow-hidden rounded-[2rem] bg-white/[0.01] border border-white/5">
-        <div className="relative p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-4 mb-3">
-              <div className={`p-2 rounded-lg border ${theme.badge}`}>
-                <Zap className="w-5 h-5" />
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">{theme.title}</h1>
-            </div>
-            <p className="text-zinc-500 text-sm font-medium leading-relaxed max-w-xl">
-              {theme.desc}
-            </p>
-          </div>
-          <div className="flex flex-col md:items-end bg-black/20 border border-white/5 p-4 rounded-xl">
-            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-               <Activity className="w-3 h-3"/> Active Quota
-            </span>
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${tokenBalance > 0 ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`} />
-              <span className="font-mono font-bold text-xl text-zinc-200">{tokenBalance} <span className="text-xs font-sans text-zinc-500">Tokens</span></span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PageHeading
+        stamp="Engine"
+        title={`${theme.title}.`}
+        lede={theme.desc}
+        meta={<QuotaMeta value={tokenBalance} />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        <div className={`lg:col-span-4 bg-white/[0.01] border border-white/5 rounded-3xl p-6 transition-all duration-500 ${mode === 'naming' ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+        <div className={`lg:col-span-4 bg-bg border border-line p-6 transition-all duration-500 ${mode === 'naming' ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div className="flex items-center justify-between border-b border-line pb-4 mb-5">
             <div className="flex items-center gap-2.5">
-              <Settings2 className="w-4 h-4 text-zinc-400" />
-              <h2 className="text-sm font-bold text-zinc-200">Generation Rules</h2>
+              <Settings2 className="w-4 h-4 text-text-muted" />
+              <h2 className="text-sm font-bold text-text">Generation Rules</h2>
             </div>
-            <span className="text-[9px] font-bold bg-white/5 px-2 py-1 rounded text-zinc-400 uppercase tracking-widest border border-white/5">
+            <span className="text-[9px] font-bold bg-wash px-2 py-1 text-text-muted uppercase tracking-widest border border-line">
               Sequential
             </span>
           </div>
 
           <div className="space-y-5">
             <div className="space-y-1.5 pb-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <Camera size={14}/> Jenis Aset
               </label>
-              <div className="flex bg-black/20 border border-white/5 rounded-lg p-1">
+              <div className="flex bg-wash border border-line p-1">
                 <button
                   onClick={() => setImageType('vector')}
                   disabled={isProcessing}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-md transition-all ${
-                    imageType === 'vector' ? 'bg-zinc-100 text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold transition-all ${ imageType === 'vector' ? 'bg-btn-bg text-btn-fg ' : 'text-text-muted hover:text-text' }`}
                 >
                   <PenTool size={14} /> Vector / Art
                 </button>
                 <button
                   onClick={() => setImageType('realistic')}
                   disabled={isProcessing}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-md transition-all ${
-                    imageType === 'realistic' ? 'bg-zinc-100 text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold transition-all ${ imageType === 'realistic' ? 'bg-btn-bg text-btn-fg ' : 'text-text-muted hover:text-text' }`}
                 >
                   <Camera size={14} /> Realistic Photo
                 </button>
@@ -534,11 +505,11 @@ export default function UnifiedMetadataGenerator() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Target Extension Override</label>
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Target Extension Override</label>
               <select 
                 value={config.targetExtension} 
                 onChange={e => setConfig({...config, targetExtension: e.target.value})} 
-                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-semibold text-zinc-200 focus:outline-none focus:border-white/20 transition-all cursor-pointer appearance-none"
+                className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-semibold text-text focus:outline-none focus:border-text transition-all cursor-pointer appearance-none"
               >
                 <option value="auto">Auto (Bawaan File)</option>
                 <option value="eps">.eps (Master Vektor)</option>
@@ -546,58 +517,58 @@ export default function UnifiedMetadataGenerator() {
                 <option value="png">.png (Raster Transparan)</option>
                 <option value="svg">.svg (Vektor SVG)</option>
               </select>
-              <p className="text-[10px] text-zinc-600 font-medium pt-1">Ekstensi otomatis terganti saat di-export ke CSV.</p>
+              <p className="text-[10px] text-text-faint font-medium pt-1">Ekstensi otomatis terganti saat di-export ke CSV.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Min Length</label>
-                <input type="number" value={config.titleLengthMin} onChange={e => setConfig({...config, titleLengthMin: Number(e.target.value)})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-white/20 transition-all" />
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Min Length</label>
+                <input type="number" value={config.titleLengthMin} onChange={e => setConfig({...config, titleLengthMin: Number(e.target.value)})} className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-mono text-text focus:outline-none focus:border-text transition-all" />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Max Length</label>
-                <input type="number" value={config.titleLengthMax} onChange={e => setConfig({...config, titleLengthMax: Number(e.target.value)})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-white/20 transition-all" />
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Max Length</label>
+                <input type="number" value={config.titleLengthMax} onChange={e => setConfig({...config, titleLengthMax: Number(e.target.value)})} className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-mono text-text focus:outline-none focus:border-text transition-all" />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Target Keywords</label>
-              <input type="number" value={config.keywordsCount} onChange={e => setConfig({...config, keywordsCount: Number(e.target.value)})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-white/20 transition-all" />
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Target Keywords</label>
+              <input type="number" value={config.keywordsCount} onChange={e => setConfig({...config, keywordsCount: Number(e.target.value)})} className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-mono text-text focus:outline-none focus:border-text transition-all" />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Context (Optional)</label>
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Context (Optional)</label>
               <textarea 
                 value={config.conceptContext} 
                 onChange={e => setConfig({...config, conceptContext: e.target.value})} 
                 placeholder="e.g., vector set bundle..." 
-                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-200 h-20 resize-none focus:outline-none focus:border-white/20 transition-all" 
+                className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-medium text-text h-20 resize-none focus:outline-none focus:border-text transition-all" 
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Negative Terms</label>
-              <textarea value={config.negativeKeywords} onChange={e => setConfig({...config, negativeKeywords: e.target.value})} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-200 h-16 resize-none focus:outline-none focus:border-white/20 transition-all" />
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Negative Terms</label>
+              <textarea value={config.negativeKeywords} onChange={e => setConfig({...config, negativeKeywords: e.target.value})} className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-medium text-text h-16 resize-none focus:outline-none focus:border-text transition-all" />
             </div>
 
-            <div className="space-y-1.5 pt-4 border-t border-white/5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">API Delay (ms)</label>
+            <div className="space-y-1.5 pt-4 border-t border-line">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">API Delay (ms)</label>
               <input 
                 type="number" 
                 step="500" min="500"
                 value={config.delay} 
                 onChange={e => setConfig({...config, delay: Number(e.target.value)})} 
-                className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2.5 text-sm font-mono text-zinc-200 focus:outline-none focus:border-white/20 transition-all" 
+                className="w-full bg-bg-elevated border border-line px-3 py-2.5 text-sm font-mono text-text focus:outline-none focus:border-text transition-all" 
               />
             </div>
           </div>
         </div>
 
         <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6">
+          <div className="bg-bg border border-line p-6">
             <div className="flex flex-wrap items-center justify-between mb-5 gap-4">
-              <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-                <ImageIcon className="w-4 h-4 text-zinc-400" />
+              <h2 className="text-base font-bold text-text flex items-center gap-2.5">
+                <ImageIcon className="w-4 h-4 text-text-muted" />
                 Asset Workspace
               </h2>
               <div className="flex items-center gap-3">
@@ -605,14 +576,14 @@ export default function UnifiedMetadataGenerator() {
                   <button 
                     onClick={() => setIsExportModalOpen(true)} 
                     disabled={isProcessing} 
-                    className="text-xs font-bold bg-zinc-100 text-black px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-white transition-all active:scale-95"
+                    className="btn-primary h-9 px-4 text-xs"
                   >
                     <Download className="w-3.5 h-3.5" />
                     Export CSV ({successCount})
                   </button>
                 )}
                 {files.length > 0 && (
-                  <button onClick={clearAll} disabled={isProcessing} className="text-xs font-bold text-zinc-400 hover:text-zinc-200 hover:bg-white/5 px-3 py-2 rounded-lg transition-colors border border-transparent">
+                  <button onClick={clearAll} disabled={isProcessing} className="btn-ghost h-9 px-3 text-xs disabled:opacity-50">
                     Clear Board
                   </button>
                 )}
@@ -623,17 +594,15 @@ export default function UnifiedMetadataGenerator() {
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
-              className={`flex flex-col items-center justify-center w-full h-48 border border-dashed rounded-xl cursor-pointer transition-all duration-300 group ${
-                isDragging ? "border-white/30 bg-white/[0.02]" : "border-white/10 bg-black/20 hover:bg-white/[0.02] hover:border-white/20"
-              }`}
+              className={`flex flex-col items-center justify-center w-full h-48 border border-dashed cursor-pointer transition-all duration-300 group ${ isDragging ? "border-text bg-wash" : "border-line bg-wash hover:bg-wash hover:border-text" }`}
             >
-              <div className={`p-4 rounded-full mb-3 transition-colors ${isDragging ? "bg-white/10" : "bg-white/5 group-hover:bg-white/10"}`}>
-                <UploadCloud className={`w-6 h-6 ${isDragging ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"}`} />
+              <div className={`p-4 mb-3 transition-colors ${isDragging ? "bg-btn-bg" : "bg-wash group-hover:bg-wash"}`}>
+                <UploadCloud className={`w-6 h-6 ${isDragging ? "text-text" : "text-text-muted group-hover:text-text"}`} />
               </div>
-              <p className="text-sm text-zinc-200 font-bold">
+              <p className="text-sm text-text font-bold">
                  {mode === "naming" ? "Paste image (Ctrl+V) or Drag & Drop" : "Drag & Drop files here or Paste (Ctrl+V)"}
               </p>
-              <p className="text-[10px] text-zinc-500 mt-1.5 font-mono uppercase tracking-widest">Supports Standard Image & SVG</p>
+              <p className="text-[10px] text-text-muted mt-1.5 font-mono uppercase tracking-widest">Supports Standard Image & SVG</p>
               <input type="file" multiple accept="image/*" onChange={(e) => addFiles(Array.from(e.target.files || []))} className="hidden" />
             </label>
 
@@ -643,26 +612,26 @@ export default function UnifiedMetadataGenerator() {
                   <button 
                     onClick={processBatch} 
                     disabled={isProcessing || doneCount === totalCount}
-                    className="flex-1 bg-zinc-100 text-black py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-white transition-all active:scale-[0.98]"
+                    className="btn-primary flex-1"
                   >
                     {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
                     {isProcessing ? "Processing Elements..." : doneCount === totalCount ? "Task Completed" : mode === 'naming' ? `Run Auto-Naming (${files.filter(f => f.status === 'pending' || f.status === 'error').length} Token)` : `Run Generator (${files.filter(f => f.status === 'pending' || f.status === 'error').length} Token)`}
                   </button>
                   {isProcessing && (
-                    <button onClick={() => stopRef.current = true} className="px-6 py-3 bg-black/40 border border-white/5 text-zinc-300 rounded-xl font-bold hover:bg-rose-500/10 hover:text-rose-400 hover:border-rose-500/20 transition-all text-sm">
+                    <button onClick={() => stopRef.current = true} className="btn-ghost">
                       Stop
                     </button>
                   )}
                 </div>
 
                 {(isProcessing || doneCount > 0) && (
-                  <div className="pt-4 border-t border-white/5 space-y-2.5">
+                  <div className="pt-4 border-t border-line space-y-2.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Sync Progress</span>
-                      <span className="text-xs font-mono font-bold text-zinc-300">{doneCount} / {totalCount}</span>
+                      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Sync Progress</span>
+                      <span className="text-xs font-mono font-bold text-text">{doneCount} / {totalCount}</span>
                     </div>
-                    <div className="w-full h-1.5 bg-black/40 rounded-full overflow-hidden">
-                      <div className="h-full bg-zinc-200 transition-all duration-500 ease-out" style={{ width: `${progressPercent}%` }} />
+                    <div className="w-full h-1.5 bg-bg-elevated overflow-hidden">
+                      <div className="h-full bg-btn-bg transition-all duration-500 ease-out" style={{ width: `${progressPercent}%` }} />
                     </div>
                   </div>
                 )}
@@ -672,129 +641,129 @@ export default function UnifiedMetadataGenerator() {
 
           <div className="space-y-4">
             {files.map((file) => (
-              <motion.div key={file.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row gap-5 p-5 border border-white/5 rounded-2xl bg-white/[0.01] hover:bg-white/[0.02] transition-colors group">
+              <motion.div key={file.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row gap-5 p-5 border border-line bg-bg hover:bg-wash transition-colors group">
                 
-                <div className="w-full sm:w-32 h-32 shrink-0 rounded-xl overflow-hidden border border-white/5 bg-black/40 flex items-center justify-center relative">
+                <div className="w-full sm:w-32 h-32 shrink-0 overflow-hidden border border-line bg-bg-elevated flex items-center justify-center relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={file.previewUrl} alt="preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   {file.status === "processing" && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
-                      <Loader2 className="w-6 h-6 animate-spin text-zinc-300" />
+                    <div className="absolute inset-0 bg-bg/80 flex items-center justify-center">
+                      <Loader2 className="w-6 h-6 animate-spin text-text" />
                     </div>
                   )}
                   {file.status === "success" && (
-                    <div className="absolute top-2 right-2 bg-emerald-500/20 border border-emerald-500/30 rounded-md p-1 backdrop-blur-md">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                    <div className="absolute top-2 right-2 bg-wash border border-line p-1">
+                      <CheckCircle2 className="w-3 h-3 text-accent" />
                     </div>
                   )}
                 </div>
 
                 <div className="flex-1 min-w-0 flex flex-col justify-center">
-                  {file.status === "pending" && <p className="text-zinc-500 font-medium text-xs flex items-center gap-2"><span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span> Queued for processing...</p>}
-                  {file.status === "error" && <p className="text-rose-400 font-medium text-xs flex items-center gap-2 bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/20 w-fit"><AlertCircle className="w-3.5 h-3.5"/> {file.errorMessage}</p>}
+                  {file.status === "pending" && <p className="text-text-muted font-medium text-xs flex items-center gap-2"><span className="w-1.5 h-1.5 bg-btn-bg animate-pulse"></span> Queued for processing...</p>}
+                  {file.status === "error" && <p className="text-accent font-medium text-xs flex items-center gap-2 bg-wash p-2.5 border border-line w-fit"><AlertCircle className="w-3.5 h-3.5"/> {file.errorMessage}</p>}
                   
                   {file.status === "success" && file.metadata && (
                     <div className="space-y-3">
                       {mode === "naming" ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                            <div className="space-y-1.5">
-                             <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Folder (Kebab)</span><button onClick={() => copyToClipboard(file.metadata?.folderName || '', `f-${file.id}`)} className="text-zinc-600 hover:text-zinc-300 transition-colors">{copiedId === `f-${file.id}` ? <Check size={12}/> : <Copy size={12}/>}</button></div>
-                             <p className="text-xs text-zinc-300 font-mono bg-black/40 border border-white/5 px-3 py-2.5 rounded-lg break-all">{file.metadata?.folderName || ""}</p>
+                             <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Folder (Kebab)</span><button onClick={() => copyToClipboard(file.metadata?.folderName || '', `f-${file.id}`)} className="text-text-faint hover:text-text transition-colors">{copiedId === `f-${file.id}` ? <Check size={12}/> : <Copy size={12}/>}</button></div>
+                             <p className="text-xs text-text font-mono bg-bg-elevated border border-line px-3 py-2.5 break-all">{file.metadata?.folderName || ""}</p>
                            </div>
                            <div className="space-y-1.5">
-                             <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">File (Snake)</span><button onClick={() => copyToClipboard(file.metadata?.fileName || '', `m-${file.id}`)} className="text-zinc-600 hover:text-zinc-300 transition-colors">{copiedId === `m-${file.id}` ? <Check size={12}/> : <Copy size={12}/>}</button></div>
-                             <p className="text-xs text-zinc-300 font-mono bg-black/40 border border-white/5 px-3 py-2.5 rounded-lg break-all">{file.metadata?.fileName || ""}</p>
+                             <div className="flex items-center justify-between"><span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">File (Snake)</span><button onClick={() => copyToClipboard(file.metadata?.fileName || '', `m-${file.id}`)} className="text-text-faint hover:text-text transition-colors">{copiedId === `m-${file.id}` ? <Check size={12}/> : <Copy size={12}/>}</button></div>
+                             <p className="text-xs text-text font-mono bg-bg-elevated border border-line px-3 py-2.5 break-all">{file.metadata?.fileName || ""}</p>
                            </div>
                            <div className="md:col-span-2 space-y-1.5 pt-1">
-                             <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Display Title</span>
-                             <p className="text-sm text-zinc-200 font-semibold">{file.metadata?.title || ""}</p>
+                             <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Display Title</span>
+                             <p className="text-sm text-text font-semibold">{file.metadata?.title || ""}</p>
                            </div>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between px-1">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Generated Title / Description</span>
-                              <span className="text-[9px] font-mono font-medium text-zinc-500 bg-black/40 px-1.5 py-0.5 rounded border border-white/5">{(file.metadata?.title || "").length} chars</span>
+                              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Generated Title / Description</span>
+                              <span className="text-[9px] font-mono font-medium text-text-muted bg-bg-elevated px-1.5 py-0.5 border border-line">{(file.metadata?.title || "").length} chars</span>
                             </div>
                             <textarea 
                               value={file.metadata?.title || ""}
                               onChange={(e) => updateMetadata(file.id, "title", e.target.value)}
-                              className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-semibold text-zinc-200 focus:outline-none focus:border-white/20 transition-all resize-none h-16 custom-scrollbar"
+                              className="w-full bg-bg-elevated border border-line px-4 py-3 text-sm font-semibold text-text focus:outline-none focus:border-text transition-all resize-none h-16 custom-scrollbar"
                             />
                           </div>
                           
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between px-1">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">SEO Keywords</span>
-                              <span className="text-[9px] font-mono font-medium text-zinc-500 bg-black/40 px-1.5 py-0.5 rounded border border-white/5">{(file.metadata?.keywords || "").split(',').filter(k => k.trim() !== "").length} tags</span>
+                              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">SEO Keywords</span>
+                              <span className="text-[9px] font-mono font-medium text-text-muted bg-bg-elevated px-1.5 py-0.5 border border-line">{(file.metadata?.keywords || "").split(',').filter(k => k.trim() !== "").length} tags</span>
                             </div>
                             <textarea 
                               value={file.metadata?.keywords || ""}
                               onChange={(e) => updateMetadata(file.id, "keywords", e.target.value)}
-                              className="w-full bg-black/20 border border-white/5 rounded-xl px-4 py-3 text-xs text-zinc-400 font-medium focus:outline-none focus:border-white/20 transition-all resize-none h-20 leading-relaxed custom-scrollbar"
+                              className="w-full bg-wash border border-line px-4 py-3 text-xs text-text-muted font-medium focus:outline-none focus:border-text transition-all resize-none h-20 leading-relaxed custom-scrollbar"
                             />
                           </div>
 
                           {mode === "adobe" && (
                             <div className="space-y-4 pt-1">
                               <div className="space-y-1.5">
-                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">AI Category Match</span>
+                                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest block px-1">AI Category Match</span>
                                 <div className="relative group/select w-fit">
                                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
-                                    <Layers className="w-3.5 h-3.5 text-zinc-500" />
+                                    <Layers className="w-3.5 h-3.5 text-text-muted" />
                                   </div>
                                   <select 
                                     value={file.metadata?.category || 8}
                                     onChange={(e) => updateMetadata(file.id, "category", parseInt(e.target.value))}
-                                    className="w-full bg-white/5 border border-white/5 pl-9 pr-8 py-2 rounded-lg text-xs font-bold text-zinc-300 outline-none hover:bg-white/10 focus:border-white/20 transition-all appearance-none cursor-pointer relative z-0"
+                                    className="w-full bg-wash border border-line pl-9 pr-8 py-2 text-xs font-bold text-text outline-none hover:bg-wash focus:border-text transition-all appearance-none cursor-pointer relative z-0"
                                   >
                                     {Object.entries(ADOBE_CATEGORIES).map(([id, name]) => (
-                                      <option key={id} value={id} className="bg-[#121212] text-zinc-200 font-medium">
+                                      <option key={id} value={id} className="bg-bg text-text font-medium">
                                         {name} (ID: {id})
                                       </option>
                                     ))}
                                   </select>
                                   <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
-                                    <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover/select:text-zinc-300 transition-colors" />
+                                    <ChevronDown className="w-3.5 h-3.5 text-text-muted group-hover/select:text-text transition-colors" />
                                   </div>
                                 </div>
                               </div>
 
                               {/* Tampilan Otomatis Checklist AI Generative & People untuk Realistic Photo */}
                               {imageType === "realistic" && (
-                                <div className="bg-black/30 border border-white/5 rounded-xl p-3.5 space-y-3 mt-2">
+                                <div className="bg-wash border border-line p-3.5 space-y-3 mt-2">
                                   <div className="flex items-start gap-2.5">
                                     <input 
                                       type="checkbox"
                                       id={`ai-gen-${file.id}`}
                                       checked={file.metadata?.isAiGenerative ?? true}
                                       onChange={(e) => updateMetadata(file.id, "isAiGenerative", e.target.checked)}
-                                      className="mt-0.5 h-3.5 w-3.5 rounded border-white/10 bg-black/40 text-zinc-100 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                      className="mt-0.5 h-3.5 w-3.5 border-line bg-bg-elevated text-text focus:ring-0 focus:ring-offset-0 cursor-pointer"
                                     />
-                                    <label htmlFor={`ai-gen-${file.id}`} className="text-xs font-semibold text-zinc-300 cursor-pointer select-none">
+                                    <label htmlFor={`ai-gen-${file.id}`} className="text-xs font-semibold text-text cursor-pointer select-none">
                                       Created using generative AI tools
                                     </label>
                                   </div>
 
-                                  <div className="flex items-start gap-2.5 border-t border-white/5 pt-2.5">
+                                  <div className="flex items-start gap-2.5 border-t border-line pt-2.5">
                                     <input 
                                       type="checkbox"
                                       id={`ai-people-${file.id}`}
                                       checked={file.metadata?.hasPeople ?? false}
                                       onChange={(e) => updateMetadata(file.id, "hasPeople", e.target.checked)}
-                                      className="mt-0.5 h-3.5 w-3.5 rounded border-white/10 bg-black/40 text-zinc-100 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                      className="mt-0.5 h-3.5 w-3.5 border-line bg-bg-elevated text-text focus:ring-0 focus:ring-offset-0 cursor-pointer"
                                     />
                                     <div className="flex flex-col">
-                                      <label htmlFor={`ai-people-${file.id}`} className="text-xs font-semibold text-zinc-300 cursor-pointer select-none flex items-center gap-2">
+                                      <label htmlFor={`ai-people-${file.id}`} className="text-xs font-semibold text-text cursor-pointer select-none flex items-center gap-2">
                                         People and Property are fictional
                                         {file.metadata?.hasPeople && (
-                                          <span className="text-[9px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider">
+                                          <span className="text-[9px] bg-wash border border-line text-accent px-1.5 py-0.5 font-bold uppercase tracking-wider">
                                             Auto-Detected
                                           </span>
                                         )}
                                       </label>
-                                      <p className="text-[10px] text-zinc-500 mt-0.5 leading-normal">
+                                      <p className="text-[10px] text-text-muted mt-0.5 leading-normal">
                                         Aktif otomatis jika mendeteksi wajah/manusia dalam metadata. Kosong jika hanya mockup/objek.
                                       </p>
                                     </div>
@@ -806,24 +775,24 @@ export default function UnifiedMetadataGenerator() {
 
                           {mode === "shutterstock" && (
                             <div className="space-y-1.5 pt-1">
-                              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block px-1">Shutterstock Category</span>
+                              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest block px-1">Shutterstock Category</span>
                               <div className="relative group/select w-fit">
                                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none z-10">
-                                  <Grid className="w-3.5 h-3.5 text-zinc-500" />
+                                  <Grid className="w-3.5 h-3.5 text-text-muted" />
                                 </div>
                                 <select 
                                   value={file.metadata?.category || "Abstract"}
                                   onChange={(e) => updateMetadata(file.id, "category", e.target.value)}
-                                  className="w-full min-w-[200px] bg-white/5 border border-white/5 pl-9 pr-8 py-2 rounded-lg text-xs font-bold text-zinc-300 outline-none hover:bg-white/10 focus:border-white/20 transition-all appearance-none cursor-pointer relative z-0"
+                                  className="w-full min-w-[200px] bg-wash border border-line pl-9 pr-8 py-2 text-xs font-bold text-text outline-none hover:bg-wash focus:border-text transition-all appearance-none cursor-pointer relative z-0"
                                 >
                                   {SHUTTERSTOCK_CATEGORIES.map((catName) => (
-                                    <option key={catName} value={catName} className="bg-[#121212] text-zinc-200 font-medium">
+                                    <option key={catName} value={catName} className="bg-bg text-text font-medium">
                                       {catName}
                                     </option>
                                   ))}
                                 </select>
                                 <div className="absolute inset-y-0 right-0 flex items-center pr-2.5 pointer-events-none">
-                                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 group-hover/select:text-zinc-300 transition-colors" />
+                                  <ChevronDown className="w-3.5 h-3.5 text-text-muted group-hover/select:text-text transition-colors" />
                                 </div>
                               </div>
                             </div>
@@ -841,32 +810,32 @@ export default function UnifiedMetadataGenerator() {
 
       <AnimatePresence>
         {isExportModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
-              <div className="p-5 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Download className="w-4 h-4 text-zinc-500" /> Export Data
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/90">
+            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-bg border border-line w-full max-w-sm overflow-hidden">
+              <div className="p-5 border-b border-line flex justify-between items-center">
+                <h3 className="text-base font-bold text-text flex items-center gap-2">
+                  <Download className="w-4 h-4 text-text-muted" /> Export Data
                 </h3>
-                <button onClick={() => setIsExportModalOpen(false)} className="text-zinc-500 hover:text-white p-1.5 rounded-md transition-colors hover:bg-white/5">
+                <button onClick={() => setIsExportModalOpen(false)} className="border border-line p-1.5 text-text-muted transition-colors duration-hover hover:border-text hover:bg-text hover:text-bg">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               
               <form onSubmit={handleExport} className="p-6 space-y-5">
-                <div className="text-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">Ready to Download</span>
-                  <span className="text-3xl font-mono text-zinc-200 font-bold">{successCount} <span className="text-sm font-sans text-zinc-500">Rows</span></span>
+                <div className="text-center bg-wash p-4 border border-line">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest block mb-1">Ready to Download</span>
+                  <span className="text-3xl font-mono text-text font-bold">{successCount} <span className="text-sm font-sans text-text-muted">Rows</span></span>
                 </div>
 
                 {mode === "canva" && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Artist Brand Name</label>
+                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Artist Brand Name</label>
                     <input
                       type="text"
                       required
                       value={artistName}
                       onChange={(e) => setArtistName(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                      className="w-full bg-bg-elevated border border-line py-2.5 px-3 text-sm text-text focus:outline-none focus:border-text transition-colors"
                       placeholder="e.g., Studio Desain"
                     />
                   </div>
@@ -874,7 +843,7 @@ export default function UnifiedMetadataGenerator() {
 
                 <button
                   type="submit"
-                  className="w-full bg-zinc-100 text-black font-bold text-sm rounded-lg py-3 mt-2 hover:bg-white active:scale-[0.98] transition-all"
+                  className="btn-primary mt-2 w-full"
                 >
                   Download .CSV
                 </button>
@@ -886,16 +855,16 @@ export default function UnifiedMetadataGenerator() {
 
       <AnimatePresence>
         {showTokenAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl p-8 text-center">
-              <div className="w-12 h-12 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center justify-center mx-auto mb-5">
-                <AlertCircle className="w-6 h-6 text-rose-500" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/90">
+            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-bg border border-line w-full max-w-sm p-8 text-center">
+              <div className="w-12 h-12 bg-wash border border-line flex items-center justify-center mx-auto mb-5">
+                <AlertCircle className="w-6 h-6 text-accent" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Insufficient Quota</h3>
-              <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
-                Anda hanya memiliki <span className="text-rose-400 font-bold">{tokenBalance} Tokens</span>. Jumlah ini kurang dari antrean file yang Anda minta.
+              <h3 className="text-lg font-bold text-text mb-2">Insufficient Quota</h3>
+              <p className="text-text-muted text-sm mb-6 leading-relaxed">
+                Anda hanya memiliki <span className="text-accent font-bold">{tokenBalance} Tokens</span>. Jumlah ini kurang dari antrean file yang Anda minta.
               </p>
-              <button onClick={() => setShowTokenAlert(false)} className="w-full bg-white/5 border border-white/10 text-white font-bold text-sm py-3 rounded-lg hover:bg-white/10 transition-colors">
+              <button onClick={() => setShowTokenAlert(false)} className="btn-ghost w-full">
                 Dismiss
               </button>
             </motion.div>

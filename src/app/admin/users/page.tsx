@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { createNewUser, deleteAuthUser, updateUserPassword, getAdminUsersData, updateUserToken } from "../actions";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Edit2, Trash2, X, Loader2, Coins, Search, User, Activity, ChevronLeft, ChevronRight, Lock, ShieldAlert, Crown } from "lucide-react";
+import { Edit2, Trash2, X, Loader2, Coins, Search, User, Activity, ChevronLeft, ChevronRight, Lock, ShieldAlert, Crown } from "lucide-react";
 
 type Profile = {
   id: string;
@@ -194,54 +194,54 @@ export default function UsersManagementPage() {
         transition={{ duration: 0.4 }}
         className="relative z-10 space-y-8 max-w-7xl mx-auto"
       >
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 border-b border-white/5 pb-6">
+        <div className="flex flex-col gap-6 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
-              User Management
+            <p className="mb-3 flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-accent">
+              <span className="h-px w-7 bg-accent" aria-hidden />
+              Directory
+            </p>
+            <h1 className="text-4xl font-black uppercase leading-[0.86] tracking-tighter text-text md:text-5xl">
+              Users<span className="text-accent">.</span>
             </h1>
-            <p className="text-zinc-500 mt-2 text-sm font-medium">
-              {isSuperAdmin ? "Super Admin Access: Manage permissions, passwords, and tokens." : "Admin Access: Manage standard contributor accounts."}
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-text-muted">
+              {isSuperAdmin
+                ? "Super admin: izin, password, dan kuota."
+                : "Admin: kelola akun contributor."}
             </p>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="group bg-zinc-100 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-white transition-all flex items-center gap-2 shadow-sm active:scale-95 flex-1 sm:flex-none justify-center text-sm"
-            >
-              <Plus className="w-4 h-4 transition-transform duration-300" />
-              Add User
-            </button>
-          </div>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex h-11 items-center justify-center border border-line bg-transparent px-6 text-sm font-medium text-text transition-colors duration-hover hover:border-text hover:bg-text hover:text-bg"
+          >
+            Add user
+          </button>
         </div>
 
         {/* Main Table Card */}
-        <div className="bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
-          {/* Search Bar & Stats */}
-          <div className="p-5 border-b border-white/5 flex items-center gap-3 bg-black/20">
-            <div className="relative flex-1 max-w-md group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-zinc-300 transition-colors" />
+        <div className="overflow-hidden border border-line">
+          <div className="flex items-center gap-3 border-b border-line p-4">
+            <div className="relative max-w-md flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-faint" />
               <input
                 type="text"
                 placeholder="Search username..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1); 
+                  setCurrentPage(1);
                 }}
-                className="w-full bg-white/[0.03] border border-white/5 rounded-lg py-2.5 pl-10 pr-4 text-sm text-zinc-200 focus:outline-none focus:border-white/20 focus:bg-white/[0.05] transition-all"
+                className="input-admin pl-10"
               />
             </div>
-            <div className="hidden md:flex ml-auto items-center gap-2 bg-white/[0.02] border border-white/5 px-3 py-2 rounded-lg">
-              <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{filteredUsers.length} Accounts</span>
-            </div>
+            <p className="ml-auto hidden text-[10px] uppercase tracking-[0.16em] text-text-faint md:block">
+              {filteredUsers.length} accounts
+            </p>
           </div>
 
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-black/20 border-b border-white/5 text-zinc-500 font-semibold uppercase tracking-widest text-[10px]">
+              <thead className="border-b border-line text-[10px] font-semibold uppercase tracking-[0.16em] text-text-faint">
                 <tr>
                   <th className="px-6 py-4">Account Detail</th>
                   <th className="px-6 py-4">Remaining Quota</th>
@@ -250,21 +250,21 @@ export default function UsersManagementPage() {
                   <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-line">
                 {loading ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-16 text-center">
-                      <Loader2 className="w-6 h-6 animate-spin text-zinc-500 mx-auto mb-3" />
-                      <span className="text-sm font-medium text-zinc-500">Loading user data...</span>
+                      <Loader2 className="w-6 h-6 animate-spin text-text-muted mx-auto mb-3" />
+                      <span className="text-sm font-medium text-text-muted">Loading user data...</span>
                     </td>
                   </tr>
                 ) : filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-16 text-center">
-                      <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center mx-auto mb-3">
-                        <User className="w-5 h-5 text-zinc-500" />
+                      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center border border-line">
+                        <User className="h-5 w-5 text-text-muted" />
                       </div>
-                      <span className="text-sm font-medium text-zinc-500">No users found.</span>
+                      <span className="text-sm font-medium text-text-muted">No users found.</span>
                     </td>
                   </tr>
                 ) : (
@@ -273,30 +273,40 @@ export default function UsersManagementPage() {
                     const canEditToken = isSuperAdmin;
 
                     return (
-                      <tr key={user.id} className="hover:bg-white/[0.02] transition-colors group">
+                      <tr key={user.id} className="group transition-colors duration-hover hover:bg-wash">
                         
                         {/* Account Detail */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className={`flex items-center justify-center w-9 h-9 rounded-lg border ${
-                              user.role === 'super_admin' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
-                              user.role === 'admin' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 
-                              'bg-white/5 border-white/10 text-zinc-400'
-                            }`}>
-                              {user.role === 'super_admin' ? <Crown className="w-4 h-4" /> : 
-                               user.role === 'admin' ? <ShieldAlert className="w-4 h-4" /> : 
-                               <User className="w-4 h-4" />}
+                            <div
+                              className={`flex h-9 w-9 items-center justify-center border ${
+                                user.role === "super_admin"
+                                  ? "border-accent text-accent"
+                                  : user.role === "admin"
+                                    ? "border-text text-text"
+                                    : "border-line text-text-faint"
+                              }`}
+                            >
+                              {user.role === "super_admin" ? (
+                                <Crown className="h-4 w-4" />
+                              ) : user.role === "admin" ? (
+                                <ShieldAlert className="h-4 w-4" />
+                              ) : (
+                                <User className="h-4 w-4" />
+                              )}
                             </div>
-                            
+
                             <div className="flex flex-col">
-                              <span className="font-semibold text-zinc-200 text-sm">
-                                {user.username}
-                              </span>
-                              <span className={`text-[10px] font-medium uppercase tracking-wider mt-0.5 ${
-                                user.role === 'super_admin' ? 'text-purple-400' :
-                                user.role === 'admin' ? 'text-amber-400' : 
-                                'text-zinc-500'
-                              }`}>
+                              <span className="text-sm font-semibold text-text">{user.username}</span>
+                              <span
+                                className={`mt-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                                  user.role === "super_admin"
+                                    ? "text-accent"
+                                    : user.role === "admin"
+                                      ? "text-text"
+                                      : "text-text-faint"
+                                }`}
+                              >
                                 {user.role === 'super_admin' && "Super Admin"}
                                 {user.role === 'admin' && "System Admin"}
                                 {user.role === 'user' && "Contributor"}
@@ -307,22 +317,22 @@ export default function UsersManagementPage() {
 
                         {/* Remaining Quota */}
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 font-mono text-zinc-300 text-sm">
-                            <Coins className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="inline-flex items-center gap-1.5 font-mono text-sm text-text">
+                            <Coins className="h-3.5 w-3.5 text-accent" />
                             {user.token_balance}
                           </span>
                         </td>
                         
                         {/* Token Usage */}
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 font-mono text-zinc-400 text-sm">
-                            <Activity className="w-3.5 h-3.5 text-zinc-500" />
+                          <span className="inline-flex items-center gap-1.5 font-mono text-sm text-text-muted">
+                            <Activity className="w-3.5 h-3.5 text-text-muted" />
                             {user.total_used}
                           </span>
                         </td>
 
                         {/* Created At */}
-                        <td className="px-6 py-4 text-zinc-500 text-sm">
+                        <td className="px-6 py-4 text-sm text-text-muted">
                           {new Date(user.created_at).toLocaleDateString("id-ID", {
                             day: "numeric", month: "short", year: "numeric",
                           })}
@@ -338,7 +348,7 @@ export default function UsersManagementPage() {
                                   setNewPasswordForReset("");
                                   setIsPasswordModalOpen(true);
                                 }}
-                                className="p-2 text-zinc-500 hover:text-white hover:bg-white/10 rounded-md transition-all"
+                                className="p-2 text-text-faint transition-colors duration-hover hover:text-accent"
                                 title="Reset Password"
                               >
                                 <Lock className="w-4 h-4" />
@@ -351,7 +361,7 @@ export default function UsersManagementPage() {
                                   setEditTokens(user.token_balance);
                                   setIsEditModalOpen(true);
                                 }}
-                                className="p-2 text-zinc-500 hover:text-white hover:bg-white/10 rounded-md transition-all"
+                                className="p-2 text-text-faint transition-colors duration-hover hover:text-accent"
                                 title="Edit Token"
                               >
                                 <Edit2 className="w-4 h-4" />
@@ -360,7 +370,7 @@ export default function UsersManagementPage() {
                             {canManageUser && (
                               <button
                                 onClick={() => handleDeleteUser(user.id, user.username)}
-                                className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-all"
+                                className="p-2 text-text-faint transition-colors duration-hover hover:text-accent"
                                 title="Delete User"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -378,16 +388,16 @@ export default function UsersManagementPage() {
           
           {/* Pagination Minimalis */}
           {totalPages > 1 && (
-            <div className="p-4 border-t border-white/5 bg-black/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-[11px] text-zinc-500 uppercase tracking-widest font-semibold">
-                Showing <span className="text-zinc-300">{indexOfFirstUser + 1}</span> to <span className="text-zinc-300">{Math.min(indexOfLastUser, filteredUsers.length)}</span> of <span className="text-zinc-300">{filteredUsers.length}</span>
+            <div className="flex flex-col items-center justify-between gap-4 border-t border-line p-4 sm:flex-row">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-text-faint">
+                Showing <span className="text-text">{indexOfFirstUser + 1}</span> to <span className="text-text">{Math.min(indexOfLastUser, filteredUsers.length)}</span> of <span className="text-text">{filteredUsers.length}</span>
               </div>
               
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="p-1.5 rounded-md text-zinc-500 disabled:opacity-30 hover:bg-white/5 hover:text-white transition-colors"
+                  className="p-1.5 text-text-faint transition-colors duration-hover hover:text-accent disabled:opacity-30"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -397,10 +407,10 @@ export default function UsersManagementPage() {
                     <button
                       key={page}
                       onClick={() => setCurrentPage(page)}
-                      className={`w-7 h-7 rounded-md text-xs font-medium flex items-center justify-center transition-colors ${
-                        currentPage === page 
-                          ? 'bg-white/10 text-white' 
-                          : 'bg-transparent text-zinc-500 hover:bg-white/5 hover:text-zinc-300'
+                      className={`flex h-7 w-7 items-center justify-center text-xs font-medium transition-colors ${
+                        currentPage === page
+          ? "bg-accent text-btn-bg"
+                          : "bg-transparent text-text-faint hover:text-text"
                       }`}
                     >
                       {page}
@@ -409,7 +419,7 @@ export default function UsersManagementPage() {
                 </div>
 
                 <div className="flex items-center gap-1 sm:hidden">
-                  <span className="text-xs text-zinc-300 font-medium px-2 py-1">
+                  <span className="px-2 py-1 text-xs text-text">
                     {currentPage} / {totalPages}
                   </span>
                 </div>
@@ -417,7 +427,7 @@ export default function UsersManagementPage() {
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="p-1.5 rounded-md text-zinc-500 disabled:opacity-30 hover:bg-white/5 hover:text-white transition-colors"
+                  className="p-1.5 text-text-faint transition-colors duration-hover hover:text-accent disabled:opacity-30"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -433,41 +443,41 @@ export default function UsersManagementPage() {
       {/* Modal Tambah User */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/90 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className="bg-[#0a0a0a] border border-white/10 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-md overflow-hidden border border-line bg-bg"
             >
-              <div className="p-5 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <User className="w-4 h-4 text-zinc-500" /> Create Account
+              <div className="flex items-center justify-between border-b border-line p-5">
+                <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight text-text">
+                  <User className="h-4 w-4 text-text-faint" /> Create Account
                 </h3>
-                <button onClick={() => setIsAddModalOpen(false)} className="text-zinc-500 hover:text-white p-1.5 rounded-md transition-colors hover:bg-white/5">
+                <button onClick={() => setIsAddModalOpen(false)} className="text-text-faint hover:text-accent">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <form onSubmit={handleAddUser} className="p-5 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Username</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Username</label>
                   <input
                     type="text"
                     required
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
-                    className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                    className="input-admin"
                     placeholder="e.g., editor01"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Password</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Password</label>
                   <input
                     type="text"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                    className="input-admin"
                     placeholder="Min. 6 characters"
                     minLength={6}
                   />
@@ -475,11 +485,11 @@ export default function UsersManagementPage() {
                 
                 {isSuperAdmin && (
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Access Role</label>
+                    <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Access Role</label>
                     <select
                       value={newUserRole}
                       onChange={(e) => setNewUserRole(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors appearance-none"
+                      className="input-admin appearance-none"
                     >
                       <option value="user">Contributor</option>
                       <option value="admin">System Admin</option>
@@ -489,9 +499,9 @@ export default function UsersManagementPage() {
                 )}
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Initial Quota</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Initial Quota</label>
                   <div className="relative">
-                    <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <Coins className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                     <input
                       type="number"
                       required
@@ -499,7 +509,7 @@ export default function UsersManagementPage() {
                       value={newTokens}
                       onChange={(e) => setNewTokens(Number(e.target.value))}
                       disabled={!isSuperAdmin} 
-                      className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors disabled:opacity-50"
+                      className="input-admin pl-9 disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -508,7 +518,7 @@ export default function UsersManagementPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-zinc-100 text-black font-bold rounded-lg py-3 hover:bg-white active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-50 text-sm"
+                    className="w-full bg-btn-bg py-3 text-sm font-medium text-btn-fg transition-opacity duration-hover hover:opacity-80 disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Deploy Account"}
                   </button>
@@ -522,43 +532,43 @@ export default function UsersManagementPage() {
       {/* Modal Edit Token */}
       <AnimatePresence>
         {isEditModalOpen && selectedUser && isSuperAdmin && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/90 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-sm overflow-hidden border border-line bg-bg"
             >
-              <div className="p-5 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Edit2 className="w-4 h-4 text-zinc-500" /> Edit Quota
+              <div className="flex items-center justify-between border-b border-line p-5">
+                <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight text-text">
+                  <Edit2 className="h-4 w-4 text-text-faint" /> Edit Quota
                 </h3>
-                <button onClick={() => setIsEditModalOpen(false)} className="text-zinc-500 hover:text-white p-1.5 rounded-md transition-colors hover:bg-white/5">
+                <button onClick={() => setIsEditModalOpen(false)} className="text-text-faint hover:text-accent">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <form onSubmit={handleUpdateTokens} className="p-5 space-y-5">
-                <div className="text-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">Target Account</span>
-                  <span className="text-zinc-200 font-semibold text-base">{selectedUser.username}</span>
+                <div className="border border-line bg-wash p-4 text-center">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest block mb-1">Target Account</span>
+                  <span className="text-text font-semibold text-base">{selectedUser.username}</span>
                 </div>
                 
                 <div className="relative">
-                  <Coins className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                  <Coins className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
                   <input
                     type="number"
                     required
                     min={0}
                     value={editTokens}
                     onChange={(e) => setEditTokens(Number(e.target.value))}
-                    className="w-full bg-black/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white focus:outline-none focus:border-white/30 transition-colors text-2xl font-mono"
+                    className="input-admin py-4 pl-12 font-mono text-2xl"
                   />
                 </div>
                 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-zinc-100 text-black font-bold rounded-lg py-3 hover:bg-white active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-50 text-sm"
+                    className="inline-flex h-11 w-full items-center justify-center bg-btn-bg text-sm font-medium text-btn-fg transition-opacity duration-hover hover:opacity-80 disabled:opacity-50"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Changes"}
                 </button>
@@ -571,29 +581,29 @@ export default function UsersManagementPage() {
       {/* Modal Reset Password */}
       <AnimatePresence>
         {isPasswordModalOpen && selectedUser && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/90 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden"
+              className="w-full max-w-sm overflow-hidden border border-line bg-bg"
             >
-              <div className="p-5 border-b border-white/5 flex justify-between items-center">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-zinc-500" /> Reset Password
+              <div className="flex items-center justify-between border-b border-line p-5">
+                <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-tight text-text">
+                  <Lock className="h-4 w-4 text-text-faint" /> Reset Password
                 </h3>
-                <button onClick={() => setIsPasswordModalOpen(false)} className="text-zinc-500 hover:text-white p-1.5 rounded-md transition-colors hover:bg-white/5">
+                <button onClick={() => setIsPasswordModalOpen(false)} className="text-text-faint hover:text-accent">
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <form onSubmit={handleUpdatePassword} className="p-5 space-y-5">
-                <div className="text-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
-                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-1">Target Account</span>
-                  <span className="text-zinc-200 font-semibold text-base">{selectedUser.username}</span>
+                <div className="border border-line bg-wash p-4 text-center">
+                  <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest block mb-1">Target Account</span>
+                  <span className="text-text font-semibold text-base">{selectedUser.username}</span>
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">New Password</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">New Password</label>
                   <input
                     type="text"
                     required
@@ -601,14 +611,14 @@ export default function UsersManagementPage() {
                     value={newPasswordForReset}
                     onChange={(e) => setNewPasswordForReset(e.target.value)}
                     placeholder="Min. 6 characters"
-                    className="w-full bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-white/20 transition-colors"
+                    className="input-admin"
                   />
                 </div>
                 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-zinc-100 text-black font-bold rounded-lg py-3 hover:bg-white active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-50 text-sm"
+                    className="inline-flex h-11 w-full items-center justify-center bg-btn-bg text-sm font-medium text-btn-fg transition-opacity duration-hover hover:opacity-80 disabled:opacity-50"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Credentials"}
                 </button>

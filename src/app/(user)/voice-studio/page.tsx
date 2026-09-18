@@ -21,6 +21,7 @@ import {
   ChevronDown
 } from "lucide-react";
 import { generateTTS } from "../actions/voice";
+import { PageHeading } from "@/components/ui/PageHeading";
 
 type AudioRecord = {
   id: string;
@@ -192,58 +193,48 @@ export default function VoiceStudioPage() {
   const filteredVoices = VOICES.filter(v => v.group === selectedLang);
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto space-y-8 relative z-10 pb-20">
-      
-      {/* HEADER PANEL */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-white/[0.01] border border-white/5 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="p-2 rounded-lg border bg-blue-500/10 border-blue-500/20 text-blue-400">
-              <AudioLines className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">AI Voice Studio</h1>
-          </div>
-          <p className="text-zinc-500 text-sm font-medium max-w-xl leading-relaxed">
-            Hasilkan voice-over multi-bahasa dengan intonasi natural. Gunakan Voice Tuning untuk mengatur tempo dan karakteristik suara.
-          </p>
-        </div>
-      </div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 pb-20">
+      <PageHeading
+        stamp="Engine"
+        title="Voice studio."
+        lede="Voice-over multibahasa dengan kendali tempo dan karakter suara."
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* KOLOM KIRI: CONFIG & TIPS */}
         <div className="lg:col-span-4 space-y-6">
           
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6 space-y-6">
-            <div className="flex items-center gap-2.5 border-b border-white/5 pb-4">
-              <Settings2 className="w-4 h-4 text-zinc-400" />
-              <h2 className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Configuration</h2>
+          <div className="bg-bg border border-line p-6 space-y-6">
+            <div className="flex items-center gap-2.5 border-b border-line pb-4">
+              <Settings2 className="w-4 h-4 text-text-muted" />
+              <h2 className="text-sm font-bold text-text uppercase tracking-widest">Configuration</h2>
             </div>
 
             {/* DROPDOWN LANGUAGE (NEW) */}
             <div className="space-y-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <Globe className="w-3 h-3" /> Select Language
               </label>
               <div className="relative group">
                 <select
                   value={selectedLang}
                   onChange={(e) => handleLanguageChange(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3.5 px-4 text-sm font-bold text-white focus:outline-none focus:border-white/30 transition-colors appearance-none cursor-pointer group-hover:border-white/20"
+                  className="w-full bg-bg-elevated border border-line py-3.5 px-4 text-sm font-bold text-text focus:outline-none focus:border-text transition-colors appearance-none cursor-pointer group-hover:border-text"
                 >
                   {LANGUAGES.map(lang => (
-                    <option key={lang.code} value={lang.code} className="bg-zinc-900 text-white">
+                    <option key={lang.code} value={lang.code} className="bg-bg text-text">
                       {lang.name}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none group-hover:text-zinc-300 transition-colors" />
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none group-hover:text-text transition-colors" />
               </div>
             </div>
 
             {/* VOICE SELECTION (Filtered) */}
             <div className="space-y-2 pt-2">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Voice Actors</label>
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Voice Actors</label>
               <div className="space-y-3 max-h-[220px] overflow-y-auto custom-scrollbar pr-2">
                 <AnimatePresence mode="popLayout">
                   {filteredVoices.map((v) => (
@@ -253,19 +244,17 @@ export default function VoiceStudioPage() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       key={v.id} 
                       onClick={() => setSelectedVoice(v.id)} 
-                      className={`w-full text-left p-4 rounded-xl border transition-all flex items-center justify-between group ${
-                        selectedVoice === v.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-black/20 border-white/5 hover:border-white/10'
-                      }`}
+                      className={`w-full text-left p-4 border transition-all flex items-center justify-between group ${ selectedVoice === v.id ? 'bg-wash border-accent' : 'bg-wash border-line hover:border-text' }`}
                     >
                       <div>
-                        <h3 className={`text-sm font-bold ${selectedVoice === v.id ? 'text-blue-400' : 'text-zinc-200'}`}>
-                          {v.name} <span className="text-[10px] font-normal text-zinc-500 ml-1">({v.gender})</span>
+                        <h3 className={`text-sm font-bold ${selectedVoice === v.id ? 'text-accent' : 'text-text'}`}>
+                          {v.name} <span className="text-[10px] font-normal text-text-muted ml-1">({v.gender})</span>
                         </h3>
-                        <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1.5">
+                        <p className="text-xs text-text-muted mt-1 flex items-center gap-1.5">
                           <Languages className="w-3 h-3"/> {v.lang} &bull; {v.desc}
                         </p>
                       </div>
-                      <div className={`w-3 h-3 rounded-full border-2 ${selectedVoice === v.id ? 'border-blue-400 bg-blue-400/20' : 'border-zinc-600'}`} />
+                      <div className={`w-3 h-3 border-2 ${selectedVoice === v.id ? 'border-accent bg-accent' : 'border-line'}`} />
                     </motion.button>
                   ))}
                 </AnimatePresence>
@@ -273,41 +262,41 @@ export default function VoiceStudioPage() {
             </div>
 
             {/* VOICE TUNING */}
-            <div className="pt-4 border-t border-white/5 space-y-5">
-              <div className="flex items-center gap-2 text-zinc-400 mb-1">
+            <div className="pt-4 border-t border-line space-y-5">
+              <div className="flex items-center gap-2 text-text-muted mb-1">
                  <SlidersHorizontal className="w-4 h-4" />
                  <h2 className="text-xs font-bold uppercase tracking-widest">Voice Tuning</h2>
               </div>
               
               <div className="space-y-2">
-                 <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase">
+                 <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
                     <span>Speed Rate</span>
-                    <span className="text-blue-400 font-mono">{voiceSpeed >= 0 ? `+${voiceSpeed}%` : `${voiceSpeed}%`}</span>
+                    <span className="text-accent font-mono">{voiceSpeed >= 0 ? `+${voiceSpeed}%` : `${voiceSpeed}%`}</span>
                  </div>
                  <input 
                    type="range" min="-50" max="50" value={voiceSpeed} onChange={(e) => setVoiceSpeed(Number(e.target.value))}
-                   className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                   className="w-full h-1.5 bg-bg-elevated appearance-none cursor-pointer accent-accent"
                  />
-                 <p className="text-[9px] text-zinc-600 font-medium">Tips: Turunkan -10% s/d -15% agar Gadis lebih natural.</p>
+                 <p className="text-[9px] text-text-faint font-medium">Tips: Turunkan -10% s/d -15% agar Gadis lebih natural.</p>
               </div>
 
               <div className="space-y-2">
-                 <div className="flex justify-between items-center text-[10px] font-bold text-zinc-500 uppercase">
+                 <div className="flex justify-between items-center text-[10px] font-bold text-text-muted uppercase">
                     <span>Pitch (Nada)</span>
-                    <span className="text-blue-400 font-mono">{voicePitch >= 0 ? `+${voicePitch}Hz` : `${voicePitch}Hz`}</span>
+                    <span className="text-accent font-mono">{voicePitch >= 0 ? `+${voicePitch}Hz` : `${voicePitch}Hz`}</span>
                  </div>
                  <input 
                    type="range" min="-50" max="50" value={voicePitch} onChange={(e) => setVoicePitch(Number(e.target.value))}
-                   className="w-full h-1.5 bg-black/40 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                   className="w-full h-1.5 bg-bg-elevated appearance-none cursor-pointer accent-accent"
                  />
-                 <p className="text-[9px] text-zinc-600 font-medium">Tips: Turunkan -5Hz untuk mengurangi suara robot/cempreng.</p>
+                 <p className="text-[9px] text-text-faint font-medium">Tips: Turunkan -5Hz untuk mengurangi suara robot/cempreng.</p>
               </div>
             </div>
           </div>
 
           {/* TIPS PANEL */}
-          <div className="bg-amber-500/[0.03] border border-amber-500/10 rounded-3xl p-6 space-y-4">
-            <div className="flex items-center gap-2 text-amber-400">
+          <div className="bg-bg border border-line p-6 space-y-4">
+            <div className="flex items-center gap-2 text-accent">
               <Lightbulb className="w-4 h-4" />
               <h2 className="text-xs font-bold uppercase tracking-widest">Pro Tips (AI Voices)</h2>
             </div>
@@ -318,10 +307,10 @@ export default function VoiceStudioPage() {
                 { title: "Tanda Baca", desc: "Tanda tanya (?) dan koma (,) sangat memengaruhi intonasi dan kecepatan." }
               ].map((tip, i) => (
                 <li key={i} className="space-y-1">
-                  <p className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5">
-                    <Info className="w-3 h-3 text-amber-500/50" /> {tip.title}
+                  <p className="text-[11px] font-bold text-text flex items-center gap-1.5">
+                    <Info className="w-3 h-3 text-text-faint" /> {tip.title}
                   </p>
-                  <p className="text-[10px] text-zinc-500 leading-relaxed">{tip.desc}</p>
+                  <p className="text-[10px] text-text-muted leading-relaxed">{tip.desc}</p>
                 </li>
               ))}
             </ul>
@@ -330,21 +319,21 @@ export default function VoiceStudioPage() {
 
         {/* KOLOM KANAN: WORKSPACE & HISTORY */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6 flex flex-col relative">
+          <div className="bg-bg border border-line p-6 flex flex-col relative">
             <textarea 
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Ketik skrip Anda di sini sesuai dengan bahasa yang dipilih..."
-              className="w-full h-48 bg-transparent text-zinc-200 text-sm resize-none focus:outline-none placeholder:text-zinc-600 custom-scrollbar"
+              className="w-full h-48 bg-transparent text-text text-sm resize-none focus:outline-none placeholder:text-text-faint custom-scrollbar"
             />
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-line">
+              <div className="text-[10px] text-text-muted uppercase tracking-widest font-mono">
                 {textInput.length} Characters
               </div>
               <button 
                 onClick={handleGenerate} 
                 disabled={isProcessing || !textInput.trim()} 
-                className="px-8 py-3 bg-zinc-100 text-black rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-white transition-all active:scale-[0.98] disabled:opacity-50"
+                className="btn-primary"
               >
                 {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-current" />}
                 {isProcessing ? "Synthesizing..." : "Generate Voice"}
@@ -355,26 +344,26 @@ export default function VoiceStudioPage() {
           {history.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between px-2">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Recent Takes</h3>
-                <button onClick={handleClearHistory} className="text-xs text-rose-500/70 hover:text-rose-400 flex items-center gap-1 transition-colors">
+                <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest">Recent Takes</h3>
+                <button onClick={handleClearHistory} className="text-xs text-text-muted hover:text-accent flex items-center gap-1 transition-colors">
                   <Trash2 className="w-3 h-3"/> Clear
                 </button>
               </div>
               {history.map((item) => (
-                <div key={item.id} className="flex flex-col sm:flex-row items-center gap-4 p-4 border border-white/5 rounded-2xl bg-white/[0.01] hover:bg-white/[0.02] transition-colors">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                    <Volume2 className="w-5 h-5 text-blue-400" />
+                <div key={item.id} className="flex flex-col sm:flex-row items-center gap-4 p-4 border border-line bg-bg hover:bg-wash transition-colors">
+                  <div className="w-12 h-12 bg-wash border border-line flex items-center justify-center shrink-0">
+                    <Volume2 className="w-5 h-5 text-accent" />
                   </div>
                   <div className="flex-1 min-w-0 text-center sm:text-left">
-                    <p className="text-sm font-bold text-zinc-200">Voice: {item.voiceName}</p>
-                    <p className="text-[11px] text-zinc-500 mt-1 truncate max-w-sm">&quot;{item.text}&quot;</p>
+                    <p className="text-sm font-bold text-text">Voice: {item.voiceName}</p>
+                    <p className="text-[11px] text-text-muted mt-1 truncate max-w-sm">&quot;{item.text}&quot;</p>
                   </div>
                   <div className="flex items-center gap-3 w-full sm:w-auto">
                     <audio controls src={item.audioUrl} className="h-8 w-full sm:w-48" />
                     <a 
                       href={item.audioUrl} 
                       download={`Voice_${item.voiceName}_${item.id}.mp3`}
-                      className="p-2.5 bg-zinc-100 hover:bg-white text-black font-bold border border-white/5 rounded-xl transition-all active:scale-95 shadow-sm shrink-0"
+                      className="btn-primary h-11 w-11 shrink-0 px-0"
                     >
                       <Download className="w-4 h-4" />
                     </a>
@@ -388,12 +377,12 @@ export default function VoiceStudioPage() {
 
       <AnimatePresence>
         {showTokenAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl">
-              <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2">Insufficient Quota</h3>
-              <p className="text-zinc-500 text-sm mb-6 leading-relaxed">Sisa token Anda tidak mencukupi.</p>
-              <button onClick={() => setShowTokenAlert(false)} className="w-full bg-white/5 border border-white/10 text-white font-bold py-3 rounded-lg hover:bg-white/10 transition-colors">Dismiss</button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/90">
+            <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-bg border border-line w-full max-w-sm p-8 text-center">
+              <AlertCircle className="w-12 h-12 text-accent mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-text mb-2">Insufficient Quota</h3>
+              <p className="text-text-muted text-sm mb-6 leading-relaxed">Sisa token Anda tidak mencukupi.</p>
+              <button onClick={() => setShowTokenAlert(false)} className="btn-ghost w-full">Dismiss</button>
             </motion.div>
           </div>
         )}

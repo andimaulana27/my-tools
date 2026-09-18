@@ -1,16 +1,54 @@
-// src/app/(user)/video-engine/page.tsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Video, Play, Square, Download, Settings2, Monitor, Code2, 
-  Sparkles, Loader2, AlertCircle, Trash2, Maximize2, Zap, Command,
-  Layers, Activity, Wand2, FileText 
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Activity,
+  AlertCircle,
+  Command,
+  Download,
+  FileText,
+  Layers,
+  Loader2,
+  Maximize2,
+  Monitor,
+  Play,
+  Settings2,
+  Sparkles,
+  Square,
+  Video,
+  Wand2,
+  Zap,
 } from "lucide-react";
-
-import { generateVideoCodeWithToken, generateMagicVideoIdeaFromGemini } from "../actions/video";
+import { generateMagicVideoIdeaFromGemini, generateVideoCodeWithToken, getVideoPromptHistoryCount, recordVideoSpecUse } from "../actions/video";
+import {
+  ADOBE_RESOLUTIONS,
+  CAMERAS,
+  MATERIALS,
+  MAX_DURATION_SEC,
+  MIN_DURATION_SEC,
+  PALETTES,
+  VIDEO_ENGINES,
+  VIDEO_SHAPES,
+  VIDEO_STYLES,
+  clampDuration,
+  fingerprintLabel,
+  isValidEngine,
+  preferredTemplate,
+  uniquenessKey,
+} from "@/lib/video-engine/catalog";
+import { buildAdobeStockCsv, stockCsvFilename, stockVideoFilename } from "@/lib/video-engine/adobe-csv";
+import { buildPreviewDocument } from "@/lib/video-engine/iframe";
+import {
+  ensureUniqueSpec,
+  readUniquenessMemory,
+  rememberGeneratedSpec,
+  rerollDistinct,
+  resolveSpec,
+} from "@/lib/video-engine/uniqueness";
+import type { VideoSpec } from "@/lib/video-engine/types";
+import { PageHeading, QuotaMeta } from "@/components/ui/PageHeading";
 
 interface CustomHTMLCanvasElement extends HTMLCanvasElement {
   captureStream(frameRate?: number): MediaStream;
@@ -23,46 +61,51 @@ const ADOBE_CATEGORIES = [
   { id: 10, name: "Industry" }, { id: 11, name: "Landscapes" }, { id: 12, name: "Lifestyle" },
   { id: 13, name: "People" }, { id: 14, name: "Plants and Flowers" }, { id: 15, name: "Culture and Religion" },
   { id: 16, name: "Science" }, { id: 17, name: "Social Issues" }, { id: 18, name: "Sports" },
-  { id: 19, name: "Technology" }, { id: 20, name: "Transport" }, { id: 21, name: "Travel" }
+  { id: 19, name: "Technology" }, { id: 20, name: "Transport" }, { id: 21, name: "Travel" },
 ];
 
 export default function VideoEnginePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [tokenBalance, setTokenBalance] = useState<number>(0);
-
   const [aiPrompt, setAiPrompt] = useState("");
-  
   const [engine, setEngine] = useState("");
   const [style, setStyle] = useState("");
   const [shape, setShape] = useState("");
-  
   const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isMagicLoading, setIsMagicLoading] = useState(false);
-  const [ideaHistory, setIdeaHistory] = useState<string[]>([]);
-  
-  const [code, setCode] = useState("");
+  const [spec, setSpec] = useState<VideoSpec | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [recordDuration, setRecordDuration] = useState(10);
-  
   const [resolution, setResolution] = useState({ w: 3840, h: 2160 });
-  const [renderScale, setRenderScale] = useState(1);
-  const [bitrate, setBitrate] = useState(120);
-  
+  const [fps, setFps] = useState(30);
+  const [bitrate, setBitrate] = useState(50);
   const [title, setTitle] = useState("");
   const [keywords, setKeywords] = useState("");
   const [category, setCategory] = useState("8");
   const [lastRecordedFilename, setLastRecordedFilename] = useState("");
-  // Menyimpan ekstensi codec yang berjalan agar presisi untuk manual CSV export
-  const [currentExtension, setCurrentExtension] = useState("mp4"); 
   const [error, setError] = useState<string | null>(null);
+  const [infoNote, setInfoNote] = useState<string | null>(null);
   const [showTokenAlert, setShowTokenAlert] = useState(false);
+  const [genAiMarked, setGenAiMarked] = useState(false);
+  const [historyCount, setHistoryCount] = useState(0);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const exportMetaRef = useRef({
+    videoFilename: "microstock-video-3840x2160.mp4",
+    title: "",
+    keywords: "",
+    category: "8",
+  });
 
-  const is4K = resolution.w === 3840 || resolution.h === 3840;
+  const isSelectionComplete = engine !== "" && style !== "" && shape !== "";
+  const previewDoc = useMemo(() => {
+    if (!spec) return "";
+    return buildPreviewDocument(resolveSpec(spec, resolution, fps));
+  }, [spec, resolution, fps]);
 
   useEffect(() => {
     async function fetchUser() {
@@ -75,39 +118,40 @@ export default function VideoEnginePage() {
           .eq("id", authData.user.id)
           .single();
         if (profile) setTokenBalance(profile.token_balance);
+        const history = await getVideoPromptHistoryCount(authData.user.id);
+        if (history.success) setHistoryCount(history.count);
       }
     }
     fetchUser();
   }, []);
 
-  const sanitizeFilename = (str: string) => {
-    return str.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').toLowerCase().substring(0, 50);
-  };
+  useEffect(() => {
+    function onMessage(event: MessageEvent) {
+      const data = event.data as { type?: string; message?: string };
+      if (data?.type === "stock-ready") setIsCanvasReady(true);
+      if (data?.type === "error" && data.message) {
+        setError(data.message);
+        setIsCanvasReady(false);
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
 
-  const getBaseFilename = () => {
-    const safeTitle = title ? sanitizeFilename(title) : `microstock-video`;
-    return `${safeTitle}-${resolution.w}x${resolution.h}`;
-  };
-
-  const isSelectionComplete = engine !== "" && style !== "" && shape !== "";
+  const currentVideoFilename = lastRecordedFilename || stockVideoFilename(title, resolution.w, resolution.h);
+  const currentCsvFilename = stockCsvFilename(currentVideoFilename);
 
   const handleMagicIdea = async () => {
     if (!isSelectionComplete || isGeneratingCode || isPreviewing || isMagicLoading) return;
-    
     setIsMagicLoading(true);
     try {
-      const res = await generateMagicVideoIdeaFromGemini(engine, style, shape, ideaHistory);
-      
+      const memory = readUniquenessMemory();
+      const res = await generateMagicVideoIdeaFromGemini(engine, style, shape, memory.prompts, userId);
       if (res.success && res.idea) {
-        setRecordDuration(res.idea.duration || 10);
+        setRecordDuration(clampDuration(res.idea.duration || 10));
         setAiPrompt(res.idea.prompt || "");
-        
-        setIdeaHistory(prev => {
-           const newHistory = [...prev, res.idea.prompt];
-           return newHistory.slice(-15);
-         });
       } else {
-        setAiPrompt(`Seamless looping ${engine} animation with ${style} ${shape}, highly detailed for RTX 3060`);
+        setAiPrompt(`Seamless looping ${style} ${shape} with premium studio lighting and distinct PBR materials`);
       }
     } catch (err) {
       console.error("Error fetching magic idea:", err);
@@ -118,7 +162,6 @@ export default function VideoEnginePage() {
 
   const handleGenerateCode = async () => {
     if (!userId || !aiPrompt || !isSelectionComplete) return;
-    
     if (tokenBalance < 1) {
       setShowTokenAlert(true);
       return;
@@ -126,81 +169,99 @@ export default function VideoEnginePage() {
 
     setIsGeneratingCode(true);
     setError(null);
+    setInfoNote(null);
+    setIsPreviewing(false);
+    setIsCanvasReady(false);
 
+    const memory = readUniquenessMemory();
     const formData = new FormData();
     formData.append("userId", userId);
     formData.append("prompt", aiPrompt);
     formData.append("engine", engine);
     formData.append("style", style);
     formData.append("shape", shape);
-    formData.append("duration", recordDuration.toString());
+    formData.append("duration", clampDuration(recordDuration).toString());
+    formData.append("usedKeys", JSON.stringify(memory.keys));
 
     const result = await generateVideoCodeWithToken(formData);
 
-    if (result.success && result.code) {
-      setCode(result.code);
+    if (result.success && "spec" in result && result.spec) {
+      setSpec(result.spec);
+      rememberGeneratedSpec(result.spec, aiPrompt);
       if (result.title) setTitle(result.title);
       if (result.keywords) setKeywords(result.keywords);
       if (result.category) setCategory(result.category);
-      
+      if (result.note) setInfoNote(result.note);
+      if ("historyCount" in result && typeof result.historyCount === "number") {
+        setHistoryCount(result.historyCount);
+      }
       if (result.newTokenBalance !== undefined) {
         setTokenBalance(result.newTokenBalance);
-        window.dispatchEvent(new CustomEvent('tokenBalanceUpdated', { detail: { newTokenBalance: result.newTokenBalance } }));
+        window.dispatchEvent(new CustomEvent("tokenBalanceUpdated", { detail: { newTokenBalance: result.newTokenBalance } }));
       }
     } else {
       if (result.error === "INSUFFICIENT_TOKENS") setShowTokenAlert(true);
-      else setError(result.error || "Gagal menghasilkan kode AI. Pastikan AI merespons JSON yang valid.");
+      else setError(result.error || "Gagal menghasilkan spec unik. Generate ulang.");
     }
     setIsGeneratingCode(false);
   };
 
-  const generatePreviewDoc = (jsCode: string, res: { w: number, h: number }, scale: number) => {
-    const forcedCode = jsCode
-      .replace(/window\.innerWidth/g, `${res.w}`)
-      .replace(/window\.innerHeight/g, `${res.h}`);
+  const handleLoadSample = () => {
+    if (!isSelectionComplete || isPreviewing || isRecording || !isValidEngine(engine)) return;
+    const memory = readUniquenessMemory();
+    const palette = PALETTES[(Math.abs(Date.now()) + memory.keys.length) % PALETTES.length];
+    const unique = ensureUniqueSpec(
+      {
+        engine,
+        style,
+        shape,
+        template: preferredTemplate(engine, shape),
+        material: style === "luxury" ? "gold-luxury" : style === "neon" ? "neon-emissive" : style === "organic" ? "velvet" : "italian-marble",
+        palette: palette.id,
+        camera: "orbit-hero",
+        seed: Math.floor(Math.random() * 1_000_000_000) || 1,
+        duration: clampDuration(recordDuration),
+        prompt: aiPrompt || `Sample ${style} ${shape}`,
+      },
+      memory.keys
+    );
+    setSpec(unique.spec);
+    setInfoNote("Sample spec (0 token) untuk cek kualitas runtime. Generate Unique Spec tetap diperlukan untuk judul/keyword Adobe.");
+    setError(null);
+  };
 
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-          <style>
-            body { 
-              margin: 0; padding: 0; background: #000; 
-              width: 100vw; height: 100vh; overflow: hidden;
-              display: flex; justify-content: center; align-items: center; 
-            }
-            canvas { 
-              width: 100% !important; 
-              height: 100% !important; 
-              object-fit: contain !important; 
-              image-rendering: optimizeQuality;
-              color-interpolation: sRGB;
-            }
-          </style>
-          <script>
-            window.RENDER_SCALE = ${scale};
-          </script>
-        </head>
-        <body>
-          <script>
-            try {
-              ${forcedCode}
-            } catch (e) {
-              console.error("Canvas Error:", e);
-              window.parent.postMessage({ type: 'error', message: e.message }, '*');
-            }
-          </script>
-        </body>
-      </html>
-    `;
+  const handleReroll = () => {
+    if (!spec || isPreviewing || isRecording) return;
+    const memory = readUniquenessMemory();
+    const next = rerollDistinct(spec, memory.keys);
+    setSpec(next.spec);
+    rememberGeneratedSpec(next.spec, spec.prompt);
+    setInfoNote(next.note);
+    if (!userId) return;
+    void recordVideoSpecUse({
+      userId,
+      prompt: next.spec.prompt,
+      engine: next.spec.engine,
+      style: next.spec.style,
+      shape: next.spec.shape,
+      template: next.spec.template,
+      material: next.spec.material,
+      palette: next.spec.palette,
+      camera: next.spec.camera,
+      uniquenessKey: uniquenessKey(next.spec),
+      title,
+    }).then((res) => {
+      if (res.success && typeof res.historyCount === "number") setHistoryCount(res.historyCount);
+    });
   };
 
   const handleRunPreview = () => {
+    if (!spec) return;
+    const duration = clampDuration(recordDuration);
+    setRecordDuration(duration);
+    setSpec({ ...spec, duration });
     setError(null);
+    setIsCanvasReady(false);
     setIsPreviewing(true);
   };
 
@@ -210,298 +271,289 @@ export default function VideoEnginePage() {
     }
     setIsPreviewing(false);
     setIsRecording(false);
+    setIsCanvasReady(false);
   };
 
-  const startRecording = () => {
+  const waitFrames = (count: number) =>
+    new Promise<void>((resolve) => {
+      const step = (left: number) => {
+        if (left <= 0) resolve();
+        else requestAnimationFrame(() => step(left - 1));
+      };
+      step(count);
+    });
+
+  const startRecording = async () => {
     if (!iframeRef.current) return;
-    const canvas = iframeRef.current.contentDocument?.querySelector('canvas');
-    if (!canvas) {
-      setError("Canvas tidak ditemukan di preview. Pastikan kode menggambar ke canvas.");
+    const win = iframeRef.current.contentWindow as (Window & { StockRuntime?: { resetClock: () => void } }) | null;
+    const canvas = iframeRef.current.contentDocument?.querySelector("canvas");
+    if (!canvas || !win?.StockRuntime) {
+      setError("Canvas belum siap. Jalankan preview sampai status Live Rendering muncul.");
       return;
     }
 
     try {
       const codecsToTry = [
-        "video/mp4;codecs=avc1.640034", 
-        "video/mp4;codecs=avc1.4D4028", 
-        "video/mp4;codecs=avc1",               
-        "video/webm;codecs=vp9",
+        "video/mp4;codecs=avc1.640034",
+        "video/mp4;codecs=avc1.4D4028",
+        "video/mp4;codecs=avc1",
         "video/mp4",
-        "video/webm"
       ];
-
-      let selectedMimeType = "";
-      for (const mimeType of codecsToTry) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
-          break;
-        }
-      }
-
+      const selectedMimeType = codecsToTry.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) || "";
       if (!selectedMimeType) {
-        setError("Browser Anda tidak mendukung perekaman HW-Accel secara bawaan. Pastikan Anda menggunakan Chrome/Edge versi terbaru.");
+        setError("Browser ini tidak bisa encode MP4/H.264. Pakai Chrome atau Edge terbaru. WebM ditolak Adobe Stock.");
         return;
       }
 
-      const isWebm = selectedMimeType.includes("webm");
-      const fileExt = isWebm ? "webm" : "mp4";
-      setCurrentExtension(fileExt); // Simpan ekstensi untuk file metadata
-      
-      const finalFilename = `${getBaseFilename()}.${fileExt}`;
-      setLastRecordedFilename(finalFilename);
+      const duration = clampDuration(spec?.duration || recordDuration);
+      const videoFilename = stockVideoFilename(title, resolution.w, resolution.h);
+      exportMetaRef.current = {
+        videoFilename,
+        title,
+        keywords,
+        category,
+      };
+      setLastRecordedFilename(videoFilename);
+      setIsRecording(true);
+      setError(null);
 
-      const stream = (canvas as CustomHTMLCanvasElement).captureStream(60); 
-      const recorder = new MediaRecorder(stream, { 
+      const { saveAs } = await import("file-saver");
+      saveAs(
+        buildAdobeStockCsv(videoFilename, title, keywords, category),
+        stockCsvFilename(videoFilename)
+      );
+
+      win.StockRuntime.resetClock();
+      await waitFrames(2);
+
+      const stream = (canvas as CustomHTMLCanvasElement).captureStream(fps);
+      const recorder = new MediaRecorder(stream, {
         mimeType: selectedMimeType,
-        videoBitsPerSecond: bitrate * 1000000 
+        videoBitsPerSecond: bitrate * 1000000,
       });
-      
+
       chunksRef.current = [];
-      recorder.ondataavailable = (e) => { 
-        if (e.data && e.data.size > 0) {
-          chunksRef.current.push(e.data); 
-        }
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
-
       recorder.onerror = (event: Event & { error?: Error }) => {
-        console.error("MediaRecorder Error Details:", event.error || event);
-        setError(`Perekaman Terhenti Paksa: ${event.error?.message || "Mesin GPU Browser gagal merender (Overload)."}`);
+        setError(`Perekaman terhenti: ${event.error?.message || "GPU/encoder overload. Turunkan ke HD 30fps."}`);
         setIsRecording(false);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
-
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: selectedMimeType });
-        
         if (blob.size === 0) {
-          setError("Gagal merender video (0 byte). GPU/VRAM Browser overload. Silakan muat ulang halaman.");
+          setError("Gagal merender video (0 byte). Turunkan resolusi atau FPS, lalu coba lagi.");
         } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = finalFilename; 
-          a.click();
-          
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          void downloadAdobePair(blob, exportMetaRef.current);
         }
-        
         setIsRecording(false);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorderRef.current = recorder;
-      
-      setIsRecording(true); 
-      
-      setTimeout(() => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "inactive") {
-          mediaRecorderRef.current.start(250); 
-        }
-      }, 1000);
-
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === "recording") {
-          mediaRecorderRef.current.stop();
-        }
-      }, (recordDuration * 1000) + 1000);
-
+      recorder.start(250);
+      window.setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
+      }, duration * 1000);
     } catch (err: unknown) {
       console.error(err);
-      setError("Sistem mengalami kesalahan saat inisialisasi Codec.");
+      setError("Sistem mengalami kesalahan saat inisialisasi MP4 encoder.");
       setIsRecording(false);
     }
   };
 
-  const downloadCSV = () => {
-    const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`;
-    const header = "Filename,Title,Keywords,Category,Releases\n";
-    
-    // Pastikan Filename secara akurat merekam nama dan ekstensinya
-    const currentFilename = lastRecordedFilename || `${getBaseFilename()}.${currentExtension}`;
-    
-    // Menghapus spasi yang tidak disengaja dan format yang salah
-    const safeTitle = title.trim();
-    const safeKeywords = keywords.split(',').map(k => k.trim()).filter(k => k !== '').join(',');
-    
-    const row = `${escapeCsv(currentFilename)},${escapeCsv(safeTitle)},${escapeCsv(safeKeywords)},${category},""\n`;
-    
-    // PERBAIKAN: Penambahan BOM (\ufeff) mencegah CSV corrupt dan memastikannya bisa di-load oleh Adobe Stock dan terbaca Excel dengan sempurna.
-    const blob = new Blob(['\ufeff' + header + row], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    
-    a.download = `${getBaseFilename()}-metadata.csv`;
-    a.click();
+  const downloadAdobePair = async (videoBlob: Blob, meta: { videoFilename: string; title: string; keywords: string; category: string }) => {
+    try {
+      const csvBlob = buildAdobeStockCsv(meta.videoFilename, meta.title, meta.keywords, meta.category);
+      const csvName = stockCsvFilename(meta.videoFilename);
+      const { saveAs } = await import("file-saver");
+      saveAs(videoBlob, meta.videoFilename);
+      window.setTimeout(() => saveAs(csvBlob, csvName), 400);
+      setInfoNote(`Terunduh: ${meta.videoFilename} dan ${csvName}. Kolom Filename di CSV sama persis dengan nama MP4, jadi Adobe Stock langsung mencocokkan metadata.`);
+    } catch (err) {
+      console.error(err);
+      setError("Video ter-encode, tapi gagal mengunduh CSV. Gunakan tombol CSV di bawah.");
+    }
+  };
+
+  const downloadCSV = async () => {
+    const videoFilename = lastRecordedFilename || stockVideoFilename(title, resolution.w, resolution.h);
+    const { saveAs } = await import("file-saver");
+    saveAs(buildAdobeStockCsv(videoFilename, title, keywords, category), stockCsvFilename(videoFilename));
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-7xl mx-auto space-y-8 pb-20 relative z-10">
-      
-      <div className="relative overflow-hidden rounded-[2rem] bg-white/[0.01] border border-white/5 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="p-2 rounded-lg border bg-amber-500/10 border-amber-500/20 text-amber-400">
-              <Video className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">Video Stock Engine</h1>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8 pb-20">
+      <PageHeading
+        stamp="Engine"
+        title="Video stock."
+        lede="Three.js r170 PBR, PixiJS, dan p5.js. Native 4K, loop seamless, uniqueness gate, CSV Adobe Stock."
+        meta={
+          <div>
+            <QuotaMeta value={tokenBalance} />
+            <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-text-faint">
+              History {historyCount}
+            </p>
           </div>
-          <p className="text-zinc-500 text-sm font-medium max-w-xl leading-relaxed">
-            Sistem produksi video animasi 4K. Mendukung <span className="text-zinc-300 font-bold">Three.js, PixiJS, & p5.js</span>. Pilih parameter untuk <span className="text-amber-400 font-bold">Auto-Generate (Pro)</span>.
-          </p>
-        </div>
-        <div className="flex flex-col md:items-end bg-black/20 border border-white/5 p-4 rounded-xl">
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-            <Command className="w-3 h-3"/> Active Quota
-          </span>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${tokenBalance > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-            <span className="font-mono font-bold text-xl text-zinc-200">{tokenBalance} <span className="text-xs font-sans text-zinc-500">Tokens</span></span>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-         
         <div className="lg:col-span-5 space-y-6">
-          
-          <div className="bg-white/[0.01] border border-amber-500/20 rounded-3xl p-6 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none"><Zap size={100}/></div>
-             
-             <div className="flex items-center justify-between mb-4 relative z-10">
-               <label className="text-[10px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2"><Sparkles size={14}/> AI Code Generator</label>
-               <button 
-                  onClick={handleMagicIdea}
-                  disabled={!isSelectionComplete || isGeneratingCode || isPreviewing || isMagicLoading}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm disabled:opacity-50"
-               >
-                 {isMagicLoading ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
-                 {isMagicLoading ? "Berpikir..." : "Magic Stock Idea"}
-               </button>
-             </div>
-             
-             <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
-                <select value={engine} onChange={(e) => setEngine(e.target.value)} disabled={isGeneratingCode || isPreviewing || isMagicLoading} className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-2 text-[11px] font-bold text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors">
-                  <option value="" disabled className="bg-[#0a0a0a] text-zinc-500">Pilih Engine...</option>
-                  <option value="threejs" className="bg-[#0a0a0a] text-zinc-300">Three.js (3D)</option>
-                  <option value="pixijs" className="bg-[#0a0a0a] text-zinc-300">PixiJS (2D)</option>
-                  <option value="p5js" className="bg-[#0a0a0a] text-zinc-300">p5.js (2D/Art)</option>
-                </select>
-
-                <select value={style} onChange={(e) => setStyle(e.target.value)} disabled={isGeneratingCode || isPreviewing || isMagicLoading} className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-2 text-[11px] font-bold text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors">
-                  <option value="" disabled className="bg-[#0a0a0a] text-zinc-500">Pilih Style...</option>
-                  <option value="abstract" className="bg-[#0a0a0a] text-zinc-300">Abstract</option>
-                  <option value="neon" className="bg-[#0a0a0a] text-zinc-300">Neon/Cyber</option>
-                  <option value="minimalist" className="bg-[#0a0a0a] text-zinc-300">Minimalist</option>
-                  <option value="realistic" className="bg-[#0a0a0a] text-zinc-300">Realistic</option>
-                </select>
-
-                <select value={shape} onChange={(e) => setShape(e.target.value)} disabled={isGeneratingCode || isPreviewing || isMagicLoading} className="w-full bg-black/40 border border-white/5 rounded-lg px-2 py-2 text-[11px] font-bold text-zinc-300 focus:outline-none focus:border-amber-500/50 transition-colors">
-                  <option value="" disabled className="bg-[#0a0a0a] text-zinc-500">Pilih Shape...</option>
-                  <option value="geometric" className="bg-[#0a0a0a] text-zinc-300">Geometric</option>
-                  <option value="particles" className="bg-[#0a0a0a] text-zinc-300">Particles</option>
-                  <option value="fluid" className="bg-[#0a0a0a] text-zinc-300">Fluid/Liquid</option>
-                  <option value="lines" className="bg-[#0a0a0a] text-zinc-300">Lines/Waves</option>
-                </select>
-             </div>
-
-             <textarea 
-                value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
+          <div className="bg-bg border border-line p-6 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <label className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-2">
+                <Sparkles size={14} /> Unique Spec Generator
+              </label>
+              <button
+                onClick={handleMagicIdea}
                 disabled={!isSelectionComplete || isGeneratingCode || isPreviewing || isMagicLoading}
-                placeholder={isSelectionComplete ? "Ketik prompt di sini atau gunakan Magic Stock Idea..." : "⚠️ Silakan pilih Engine, Style, dan Shape terlebih dahulu..."}
-                className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm font-medium text-white placeholder-zinc-600 resize-none h-28 focus:outline-none focus:border-amber-500/50 transition-all custom-scrollbar relative z-10"
-              />
-              <button 
-                onClick={handleGenerateCode}
-                disabled={!isSelectionComplete || isGeneratingCode || !aiPrompt || isPreviewing || isMagicLoading}
-                className="w-full mt-4 bg-amber-500 text-black py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-3 disabled:opacity-50 transition-all shadow-lg hover:bg-amber-400 active:scale-[0.98] relative z-10"
+                className="inline-flex items-center gap-1.5 border border-line px-3 py-1.5 text-xs font-medium text-accent transition-colors duration-hover hover:border-text hover:bg-text hover:text-bg disabled:opacity-50"
               >
-                {isGeneratingCode ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-4 h-4 fill-current" />}
-                {isGeneratingCode ? "Writing Animation & Metadata..." : "Generate Code & SEO (1 Token)"}
-              </button>
-          </div>
-
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6">
-            <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-4">
-              <div className="flex items-center gap-2.5">
-                <Code2 className="w-4 h-4 text-zinc-400" />
-                <h2 className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Logic & Output Engine</h2>
-              </div>
-              <button onClick={() => setCode("")} className="text-zinc-500 hover:text-rose-400 transition-colors">
-                <Trash2 size={16} />
+                {isMagicLoading ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                {isMagicLoading ? "Berpikir..." : "Magic Stock Idea"}
               </button>
             </div>
-            
-            <textarea 
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="// Tempel kode PixiJS, Three.js, atau p5.js secara manual atau generate di atas..."
-              className="w-full h-[200px] bg-black/40 border border-white/5 rounded-xl px-4 py-4 text-xs font-mono text-emerald-400 placeholder-zinc-700 resize-none focus:outline-none focus:border-white/20 transition-all custom-scrollbar"
+
+            <div className="grid grid-cols-3 gap-2 mb-4 relative z-10">
+              <select value={engine} onChange={(e) => setEngine(e.target.value)} disabled={isGeneratingCode || isPreviewing || isMagicLoading} className="w-full bg-bg-elevated border border-line px-2 py-2 text-[11px] font-bold text-text focus:outline-none focus:border-text">
+                <option value="" disabled className="bg-bg text-text-muted">Pilih Engine...</option>
+                {VIDEO_ENGINES.map((item) => (
+                  <option key={item.id} value={item.id} className="bg-bg text-text">{item.label}</option>
+                ))}
+              </select>
+              <select value={style} onChange={(e) => setStyle(e.target.value)} disabled={isGeneratingCode || isPreviewing || isMagicLoading} className="w-full bg-bg-elevated border border-line px-2 py-2 text-[11px] font-bold text-text focus:outline-none focus:border-text">
+                <option value="" disabled className="bg-bg text-text-muted">Pilih Style...</option>
+                {VIDEO_STYLES.map((item) => (
+                  <option key={item.id} value={item.id} className="bg-bg text-text">{item.label}</option>
+                ))}
+              </select>
+              <select value={shape} onChange={(e) => setShape(e.target.value)} disabled={isGeneratingCode || isPreviewing || isMagicLoading} className="w-full bg-bg-elevated border border-line px-2 py-2 text-[11px] font-bold text-text focus:outline-none focus:border-text">
+                <option value="" disabled className="bg-bg text-text-muted">Pilih Shape...</option>
+                {VIDEO_SHAPES.map((item) => (
+                  <option key={item.id} value={item.id} className="bg-bg text-text">{item.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              disabled={!isSelectionComplete || isGeneratingCode || isPreviewing || isMagicLoading}
+              placeholder={isSelectionComplete ? "Ketik konsep komersial, atau Magic Stock Idea..." : "Pilih Engine, Style, dan Shape dulu..."}
+              className="w-full bg-bg-elevated border border-line px-4 py-3 text-sm font-medium text-text placeholder:text-text-faint resize-none h-28 focus:outline-none focus:border-text custom-scrollbar relative z-10"
             />
-            
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <button
+              onClick={handleGenerateCode}
+              disabled={!isSelectionComplete || isGeneratingCode || !aiPrompt || isPreviewing || isMagicLoading}
+              className="btn-primary relative z-10 mt-4 w-full"
+            >
+              {isGeneratingCode ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-4 h-4 fill-current" />}
+              {isGeneratingCode ? "Locking unique spec & SEO..." : "Generate Unique Spec (1 Token)"}
+            </button>
+            <button
+              onClick={handleLoadSample}
+              disabled={!isSelectionComplete || isGeneratingCode || isPreviewing || isMagicLoading}
+              className="btn-ghost mt-2 h-10 w-full text-xs disabled:opacity-40"
+            >
+              Load sample spec (0 token)
+            </button>
+          </div>
+
+          <div className="bg-bg border border-line p-6">
+            <div className="flex items-center justify-between mb-5 border-b border-line pb-4">
+              <div className="flex items-center gap-2.5">
+                <Layers className="w-4 h-4 text-text-muted" />
+                <h2 className="text-sm font-bold text-text uppercase tracking-widest">Locked Runtime Spec</h2>
+              </div>
+              <button onClick={handleReroll} disabled={!spec || isPreviewing || isRecording} className="text-[10px] font-bold uppercase tracking-widest text-accent disabled:text-text-faint">
+                Reroll unique
+              </button>
+            </div>
+
+            {spec ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <SpecChip label="Template" value={spec.template} />
+                  <SpecChip label="Material" value={MATERIALS.find((item) => item.id === spec.material)?.label || spec.material} />
+                  <SpecChip label="Palette" value={PALETTES.find((item) => item.id === spec.palette)?.label || spec.palette} />
+                  <SpecChip label="Camera" value={CAMERAS.find((item) => item.id === spec.camera)?.label || spec.camera} />
+                </div>
+                <p className="text-[10px] font-mono text-accent break-all">ID {fingerprintLabel(spec)}</p>
+                <p className="text-[10px] text-text-muted">Key uniqueness: {uniquenessKey(spec)}</p>
+              </div>
+            ) : (
+              <p className="text-xs text-text-faint">Spec muncul setelah generate. Runtime yang merender, bukan kode Gemini acak.</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 mt-5">
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                  <Maximize2 size={12}/> Target Resolution
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
+                  <Maximize2 size={12} /> Native Resolution
                 </label>
-                <select 
-                   className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 focus:outline-none"
-                   value={`${resolution.w}x${resolution.h}`}
-                   onChange={(e) => {
-                     const [w, h] = e.target.value.split('x').map(Number);
-                     setResolution({ w, h });
-                     if (w === 3840 || h === 3840) {
-                      setRenderScale(1);
-                     }
+                <select
+                  className="w-full bg-bg-elevated border border-line px-3 py-2 text-xs font-bold text-text focus:outline-none"
+                  value={`${resolution.w}x${resolution.h}`}
+                  disabled={isPreviewing}
+                  onChange={(e) => {
+                    const [w, h] = e.target.value.split("x").map(Number);
+                    setResolution({ w, h });
+                    if (w >= 2160 || h >= 2160) setFps(30);
                   }}
                 >
-                  <option value="3840x2160" className="bg-[#0a0a0a] text-emerald-400">4K (Optimal Adobe)</option>
-                  <option value="1920x1080" className="bg-[#0a0a0a] text-zinc-300">FHD (1080p)</option>
-                  <option value="1080x1920" className="bg-[#0a0a0a] text-zinc-300">Vertical (TikTok)</option>
+                  {ADOBE_RESOLUTIONS.map((item) => (
+                    <option key={`${item.w}x${item.h}`} value={`${item.w}x${item.h}`} className="bg-bg text-text">
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
               </div>
-              
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                  <Layers size={12}/> Render Scale (Upscaler)
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
+                  <Activity size={12} /> Frame Rate
                 </label>
-                <select 
-                   className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 focus:outline-none"
-                   value={renderScale}
-                   onChange={(e) => setRenderScale(Number(e.target.value))}
-                >
-                  <option value={1} className="bg-[#0a0a0a] text-emerald-400">1x (Native/Stabil)</option>
-                  {!is4K && <option value={2} className="bg-[#0a0a0a] text-amber-400">2x (Menjadi 4K)</option>}
+                <select className="w-full bg-bg-elevated border border-line px-3 py-2 text-xs font-bold text-text focus:outline-none" value={fps} disabled={isPreviewing} onChange={(e) => setFps(Number(e.target.value))}>
+                  <option value={30} className="bg-bg text-accent">30 fps (aman 4K Adobe)</option>
+                  <option value={60} className="bg-bg text-accent">60 fps (HD / GPU kuat)</option>
                 </select>
               </div>
-
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                  <Activity size={12}/> Export Bitrate
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
+                  <Activity size={12} /> Export Bitrate
                 </label>
-                <select className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 focus:outline-none" value={bitrate} onChange={(e) => setBitrate(Number(e.target.value))}>
-                  <option value={30} className="bg-[#0a0a0a] text-zinc-300">30 Mbps (Optimal FHD)</option>
-                  <option value={50} className="bg-[#0a0a0a] text-amber-400">50 Mbps (Optimal 4K)</option>
-                  <option value={80} className="bg-[#0a0a0a] text-purple-400">80 Mbps (High Quality)</option>
-                  <option value={120} className="bg-[#0a0a0a] text-emerald-400">120 Mbps (RTX 3060 Power)</option>
+                <select className="w-full bg-bg-elevated border border-line px-3 py-2 text-xs font-bold text-text focus:outline-none" value={bitrate} onChange={(e) => setBitrate(Number(e.target.value))}>
+                  <option value={30} className="bg-bg text-text">30 Mbps (HD)</option>
+                  <option value={50} className="bg-bg text-accent">50 Mbps (4K recommended)</option>
+                  <option value={80} className="bg-bg text-accent">80 Mbps (high)</option>
                 </select>
               </div>
-
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-                  <Settings2 size={12}/> Duration (Sec)
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
+                  <Settings2 size={12} /> Duration 5–60s
                 </label>
-                <input type="number" value={recordDuration} onChange={(e) => setRecordDuration(Number(e.target.value))} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-500/30" />
+                <input
+                  type="number"
+                  min={MIN_DURATION_SEC}
+                  max={MAX_DURATION_SEC}
+                  value={recordDuration}
+                  disabled={isPreviewing}
+                  onChange={(e) => setRecordDuration(Number(e.target.value))}
+                  onBlur={() => {
+                    const next = clampDuration(recordDuration);
+                    setRecordDuration(next);
+                    if (spec) setSpec({ ...spec, duration: next });
+                  }}
+                  className="w-full bg-bg-elevated border border-line px-3 py-2 text-xs font-mono text-text focus:outline-none focus:border-text"
+                />
               </div>
             </div>
 
             <button
               onClick={isPreviewing ? handleStopPreview : handleRunPreview}
-              disabled={!code || isRecording}
-              className={`w-full mt-6 py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all active:scale-[0.98] ${
-                isPreviewing ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20' : 'bg-zinc-100 text-black hover:bg-white shadow-lg'
-              }`}
+              disabled={!spec || isRecording}
+              className={isPreviewing ? "btn-ghost mt-6 w-full" : "btn-primary mt-6 w-full"}
             >
               {isPreviewing ? <Square className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
               {isPreviewing ? "Terminate Engine" : "Inject & Run Preview"}
@@ -510,107 +562,108 @@ export default function VideoEnginePage() {
         </div>
 
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-4">
+          <div className="bg-bg border border-line p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-5 border-b border-line pb-4">
               <div className="flex items-center gap-2.5">
-                <Monitor className="w-4 h-4 text-zinc-400" />
-                <h2 className="text-sm font-bold text-white">Production Canvas</h2>
+                <Monitor className="w-4 h-4 text-text-muted" />
+                <h2 className="text-sm font-bold text-text">Production Canvas</h2>
               </div>
               {isPreviewing && (
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
-                    Live Rendering ({renderScale}x Scale)
+                  <span className={`w-2 h-2 ${isCanvasReady ? "bg-accent animate-pulse" : "bg-accent"}`} />
+                  <span className={`text-[10px] font-medium uppercase tracking-widest ${isCanvasReady ? "text-accent" : "text-text-faint"}`}>
+                    {isCanvasReady ? `Live ${resolution.w}x${resolution.h} @ ${fps}fps` : "Booting runtime..."}
                   </span>
                 </div>
               )}
             </div>
-            
-            <div className="w-full aspect-video bg-black/60 rounded-2xl border border-white/5 relative overflow-hidden flex items-center justify-center group shadow-inner">
-              {isPreviewing ? (
-                <iframe ref={iframeRef} srcDoc={generatePreviewDoc(code, resolution, renderScale)} style={{ width: '100%', height: '100%', border: 'none' }} title="Canvas Preview" />
+
+            <div className="w-full aspect-video bg-bg/80 border border-line relative overflow-hidden flex items-center justify-center group">
+              {isPreviewing && spec ? (
+                <iframe ref={iframeRef} srcDoc={previewDoc} style={{ width: "100%", height: "100%", border: "none" }} title="Canvas Preview" />
               ) : (
                 <div className="text-center px-8">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/5">
-                    <Monitor className="w-8 h-8 text-zinc-700" />
+                  <div className="w-16 h-16 bg-wash flex items-center justify-center mx-auto mb-4 border border-line">
+                    <Monitor className="w-8 h-8 text-text-faint" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-600 uppercase tracking-widest leading-relaxed">Preview akan muncul di sini <br /> setelah Anda menyuntikkan kode</p>
+                  <p className="text-xs font-bold text-text-faint uppercase tracking-widest leading-relaxed">Preview runtime PBR muncul di sini</p>
                 </div>
               )}
-
               {isRecording && (
-                <div className="absolute top-4 left-4 bg-rose-500 px-3 py-1.5 rounded-full flex items-center gap-2 animate-pulse shadow-xl">
-                  <div className="w-2 h-2 bg-white rounded-full" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest">Recording Media...</span>
+                <div className="absolute top-4 left-4 flex items-center gap-2 bg-accent px-3 py-1.5">
+                  <div className="h-2 w-2 bg-btn-bg" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-btn-bg">Recording MP4 loop...</span>
                 </div>
               )}
             </div>
 
-            <div className="mt-6"> 
-              <button 
-                onClick={startRecording}
-                disabled={!isPreviewing || isRecording}
-                className="w-full bg-zinc-100 text-black py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-3 disabled:opacity-30 transition-all hover:bg-white active:scale-[0.98]"
-              >
-                {isRecording ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                {isRecording ? `Encoding Video... (Wait ${recordDuration}s)` : `Start Recording & Export (${bitrate} Mbps)`}
+            <button
+              onClick={startRecording}
+              disabled={!isPreviewing || !isCanvasReady || isRecording}
+              className="btn-primary mt-6 w-full disabled:opacity-30"
+            >
+              {isRecording ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+              {isRecording ? `Encoding MP4 + CSV... (${clampDuration(spec?.duration || recordDuration)}s)` : `Export MP4 + CSV Adobe (${bitrate} Mbps)`}
+            </button>
+            <p className="mt-3 text-[10px] text-text-muted text-center leading-relaxed">
+              CSV diunduh saat tombol ditekan, MP4 menyusul setelah encode. Nama file sama: <span className="text-text lowercase">{currentVideoFilename}</span> / <span className="text-text lowercase">{currentCsvFilename}</span>
+            </p>
+          </div>
+
+          <div className="bg-bg border border-line p-6 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-5 border-b border-line pb-4 relative z-10">
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-4 h-4 text-accent" />
+                <h2 className="text-sm font-bold text-text">Adobe Stock Metadata</h2>
+              </div>
+            </div>
+            <div className="space-y-4 relative z-10">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center justify-between">
+                  Title
+                  <span className={`${title.length > 200 ? "text-accent" : "text-text-muted"}`}>{title.length}/200</span>
+                </label>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="A short description of what the asset represents" className="w-full bg-bg-elevated border border-line px-3 py-2 text-sm text-text focus:outline-none focus:border-text" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center justify-between">
+                  Keywords
+                  <span className={`${keywords.split(",").filter((k) => k.trim()).length > 49 ? "text-accent" : "text-text-muted"}`}>
+                    {keywords ? keywords.split(",").filter((k) => k.trim()).length : 0}/49
+                  </span>
+                </label>
+                <textarea value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="keyword1, keyword2, keyword3..." className="w-full h-20 bg-bg-elevated border border-line px-3 py-2 text-sm text-text resize-none focus:outline-none focus:border-text custom-scrollbar" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Category</label>
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-bg-elevated border border-line px-3 py-2 text-sm font-bold text-text focus:outline-none focus:border-text">
+                  {ADOBE_CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id.toString()} className="bg-bg text-text">{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              <label className="flex items-start gap-3 text-xs text-text-muted leading-relaxed bg-wash border border-line p-3">
+                <input type="checkbox" checked={genAiMarked} onChange={(e) => setGenAiMarked(e.target.checked)} className="mt-0.5" />
+                Saat upload di Contributor Portal, centang <span className="text-text font-semibold">Created using generative AI</span>. CSV Adobe tidak punya kolom ini.
+              </label>
+              <button onClick={downloadCSV} className="btn-primary w-full">
+                <Download className="w-4 h-4" /> Unduh ulang CSV ({currentCsvFilename})
               </button>
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest text-center leading-relaxed">
+                Adobe pair: <span className="text-accent lowercase">{currentVideoFilename}</span>
+                {" + "}
+                <span className="text-accent lowercase">{currentCsvFilename}</span>
+              </p>
             </div>
           </div>
 
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none"><FileText size={100}/></div>
-             
-             <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-4 relative z-10">
-               <div className="flex items-center gap-2.5">
-                 <FileText className="w-4 h-4 text-[#0048FF]" />
-                 <h2 className="text-sm font-bold text-white">Adobe Stock Metadata</h2>
-               </div>
-             </div>
-             
-             <div className="space-y-4 relative z-10">
-               <div className="space-y-2">
-                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between">
-                   Title
-                   <span className={`${title.length > 200 ? 'text-rose-500' : 'text-zinc-500'}`}>{title.length}/200</span>
-                 </label>
-                 {/* Input sekarang bisa diisi manual bebas tanpa batas, bisa diubah kapanpun */}
-                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="A short description of what the asset represents" className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#0048FF]/50 transition-colors" />
-               </div>
-
-               <div className="space-y-2">
-                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center justify-between">
-                   Keywords
-                   <span className={`${keywords.split(',').length > 49 ? 'text-rose-500' : 'text-zinc-500'}`}>{keywords ? keywords.split(',').filter(k => k.trim() !== '').length : 0}/49</span>
-                 </label>
-                 <textarea value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="keyword1, keyword2, keyword3..." className="w-full h-20 bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#0048FF]/50 transition-colors custom-scrollbar" />
-               </div>
-
-               <div className="space-y-2">
-                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Category</label>
-                 <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-sm font-bold text-zinc-300 focus:outline-none focus:border-[#0048FF]/50">
-                   {ADOBE_CATEGORIES.map(cat => (
-                     <option key={cat.id} value={cat.id.toString()} className="bg-[#0a0a0a] text-zinc-300">{cat.name}</option>
-                   ))}
-                 </select>
-               </div>
-
-               <button onClick={downloadCSV} className="w-full bg-[#0048FF] text-white py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-3 transition-all hover:bg-[#003FE0] shadow-lg shadow-[#0048FF]/20 active:scale-[0.98] mt-2">
-                 <Download className="w-4 h-4" /> Export CSV (Adobe Stock Format)
-               </button>
-               
-               <div className="text-center pt-2">
-                 {lastRecordedFilename ? (
-                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Linked File: <span className="text-emerald-400 lowercase">{lastRecordedFilename}</span></p>
-                 ) : (
-                   <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">File akan terhubung: <span className="text-amber-400 lowercase">{getBaseFilename()}.{currentExtension}</span></p>
-                 )}
-               </div>
-             </div>
-          </div>
-
+          {infoNote && (
+            <div className="bg-wash border border-line p-4 text-text text-xs font-bold leading-relaxed">
+              {infoNote}
+            </div>
+          )}
           {error && (
-            <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex text-left gap-3 text-rose-400 text-xs font-bold leading-relaxed">
+            <div className="bg-wash border border-line p-4 flex text-left gap-3 text-accent text-xs font-bold leading-relaxed">
               <AlertCircle size={16} className="shrink-0 mt-0.5" /> <span>{error}</span>
             </div>
           )}
@@ -619,21 +672,27 @@ export default function VideoEnginePage() {
 
       <AnimatePresence>
         {showTokenAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center">
-              <div className="w-12 h-12 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center justify-center mx-auto mb-5">
-                <AlertCircle className="w-6 h-6 text-rose-500" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/90">
+            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-bg border border-line w-full max-w-sm p-8 text-center">
+              <div className="w-12 h-12 bg-wash border border-line flex items-center justify-center mx-auto mb-5">
+                <AlertCircle className="w-6 h-6 text-accent" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Insufficient Quota</h3>
-              <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
-                Anda tidak memiliki cukup Token untuk melakukan Auto-Generate.
-              </p>
-              <button onClick={() => setShowTokenAlert(false)} className="w-full bg-white/5 border border-white/10 text-white font-bold text-sm py-3 rounded-lg hover:bg-white/10 transition-colors">Dismiss</button>
+              <h3 className="text-lg font-bold text-text mb-2">Insufficient Quota</h3>
+              <p className="text-text-muted text-sm mb-6 leading-relaxed">Anda tidak memiliki cukup Token untuk generate spec unik.</p>
+              <button onClick={() => setShowTokenAlert(false)} className="btn-ghost w-full">Dismiss</button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-
     </motion.div>
+  );
+}
+
+function SpecChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-bg-elevated border border-line px-3 py-2">
+      <p className="text-[9px] uppercase tracking-widest text-text-muted mb-1">{label}</p>
+      <p className="text-text font-bold truncate">{value}</p>
+    </div>
   );
 }

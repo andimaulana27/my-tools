@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { generateImageWithToken } from "../actions/image";
+import { PageHeading, QuotaMeta } from "@/components/ui/PageHeading";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Palette, Settings2, Play, AlertCircle, Loader2, Image as ImageIcon, 
@@ -376,40 +377,23 @@ export default function ImageEnginePage() {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="max-w-7xl mx-auto space-y-8 relative z-10 pb-20">
       
-      {/* HEADER PANEL */}
-      <div className="relative overflow-hidden rounded-[2rem] bg-white/[0.01] border border-white/5 p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="p-2 rounded-lg border bg-zinc-500/10 border-zinc-500/20 text-zinc-300">
-              <Palette className="w-5 h-5" />
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight">AI Asset Engine <span className="text-sm font-normal text-amber-500 border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 rounded ml-2 align-middle">Imagen 4.0</span></h1>
-          </div>
-          <p className="text-zinc-500 text-sm font-medium max-w-xl leading-relaxed">
-            Sistem generasi Batch massal via Google Imagen. Eksekusi direct prompt Vector & Realistic dengan sistem Kalender Perencanaan Aset.
-          </p>
-        </div>
-        <div className="flex flex-col md:items-end bg-black/20 border border-white/5 p-4 rounded-xl">
-          <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-            <Command className="w-3 h-3"/> Active Quota
-          </span>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${tokenBalance > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-            <span className="font-mono font-bold text-xl text-zinc-200">{tokenBalance} <span className="text-xs font-sans text-zinc-500">Tokens</span></span>
-          </div>
-        </div>
-      </div>
+      <PageHeading
+        stamp="Engine"
+        title="Asset generator."
+        lede="Batch Imagen: vector, realistic, dan kalender perencanaan aset."
+        meta={<QuotaMeta value={tokenBalance} />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* KOLOM KIRI: KONFIGURASI LENGKAP */}
-        <div className="lg:col-span-4 bg-white/[0.01] border border-white/5 rounded-3xl p-6 relative overflow-hidden flex flex-col h-fit">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5 shrink-0">
+        <div className="lg:col-span-4 bg-bg border border-line p-6 relative overflow-hidden flex flex-col h-fit">
+          <div className="flex items-center justify-between border-b border-line pb-4 mb-5 shrink-0">
             <div className="flex items-center gap-2.5">
-              <Settings2 className="w-4 h-4 text-zinc-400" />
-              <h2 className="text-sm font-bold text-zinc-200 uppercase tracking-widest">Design Rules</h2>
+              <Settings2 className="w-4 h-4 text-text-muted" />
+              <h2 className="text-sm font-bold text-text uppercase tracking-widest">Design Rules</h2>
             </div>
-            <span className="text-[9px] font-bold bg-white/5 text-zinc-400 px-2.5 py-1 rounded-md uppercase tracking-widest border border-white/5">
+            <span className="text-[9px] font-bold bg-wash text-text-muted px-2.5 py-1 uppercase tracking-widest border border-line">
               Batch Mode
             </span>
           </div>
@@ -417,8 +401,8 @@ export default function ImageEnginePage() {
           <div className="space-y-6">
 
             {/* EVENT & SEASONAL CALENDAR */}
-            <div className="space-y-3 bg-[#0a0a0a] p-4 rounded-xl border border-white/10 shadow-inner">
-              <label className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+            <div className="space-y-3 bg-bg p-4 border border-line">
+              <label className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-2">
                 <Calendar size={14}/> Stock Market Calendar
               </label>
               
@@ -428,13 +412,13 @@ export default function ImageEnginePage() {
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(Number(e.target.value))}
                     disabled={isGenerating}
-                    className="w-full appearance-none bg-black/80 border border-white/10 text-white text-[11px] font-medium rounded-lg px-3 py-2.5 pr-8 focus:outline-none focus:border-indigo-500/50 shadow-inner"
+                    className="w-full appearance-none bg-bg/90 border border-line text-text text-[11px] font-medium px-3 py-2.5 pr-8 focus:outline-none focus:border-text"
                   >
                     {MONTHS.map((m, idx) => (
-                      <option key={m} value={idx} className="bg-[#121212] text-zinc-200">{m}</option>
+                      <option key={m} value={idx} className="bg-bg text-text">{m}</option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-zinc-500">
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-text-muted">
                     <ChevronDown size={14} />
                   </div>
                 </div>
@@ -444,70 +428,62 @@ export default function ImageEnginePage() {
                     value={seasonalEvent}
                     onChange={(e) => setSeasonalEvent(e.target.value)}
                     disabled={isGenerating}
-                    className="w-full appearance-none bg-black/80 border border-indigo-500/30 text-indigo-200 text-[11px] font-medium rounded-lg px-3 py-2.5 pr-8 focus:outline-none focus:border-indigo-500 shadow-inner"
+                    className="w-full appearance-none bg-bg/90 border border-line text-text text-[11px] font-medium px-3 py-2.5 pr-8 focus:outline-none focus:border-text"
                   >
-                    <option value="" className="bg-[#121212] text-zinc-400">-- Bebas (General Event) --</option>
+                    <option value="" className="bg-bg text-text-muted">-- Bebas (General Event) --</option>
                     {currentMonthEvents.map((ev) => (
-                      <option key={ev.name} value={ev.name} className="bg-[#121212] text-indigo-200">
+                      <option key={ev.name} value={ev.name} className="bg-bg text-text">
                         {ev.name} ({ev.date})
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-indigo-400/50">
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none text-text-faint">
                     <ChevronDown size={14} />
                   </div>
                 </div>
               </div>
-              <p className="text-[9px] text-zinc-500 leading-relaxed mt-1">Pilih bulan target untuk mempersiapkan aset event besar dunia lebih awal.</p>
+              <p className="text-[9px] text-text-muted leading-relaxed mt-1">Pilih bulan target untuk mempersiapkan aset event besar dunia lebih awal.</p>
             </div>
             
             {/* IMAGE TYPE TOGGLE */}
-            <div className="space-y-3 pt-4 border-t border-white/5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+            <div className="space-y-3 pt-4 border-t border-line">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <Camera size={14}/> Jenis Gambar Utama
               </label>
-              <div className="flex bg-black/20 border border-white/5 rounded-lg p-1">
+              <div className="flex bg-wash border border-line p-1">
                 <button
                   onClick={() => setImageType('vector')}
                   disabled={isGenerating}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-md transition-all ${
-                    imageType === 'vector' ? 'bg-zinc-100 text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold transition-all ${ imageType === 'vector' ? 'bg-btn-bg text-btn-fg ' : 'text-text-muted hover:text-text' }`}
                 >
                   <PenTool size={14} /> Vector Art
                 </button>
                 <button
                   onClick={() => setImageType('realistic')}
                   disabled={isGenerating}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold rounded-md transition-all ${
-                    imageType === 'realistic' ? 'bg-zinc-100 text-black shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 text-xs font-bold transition-all ${ imageType === 'realistic' ? 'bg-btn-bg text-btn-fg ' : 'text-text-muted hover:text-text' }`}
                 >
                   <Camera size={14} /> Realistic Photo
                 </button>
               </div>
             </div>
 
-            <div className="space-y-3 pt-4 border-t border-white/5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+            <div className="space-y-3 pt-4 border-t border-line">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <LayoutGrid size={14}/> Mode Hasil Output
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setOutputMode('single')}
                   disabled={isGenerating || imageType === 'realistic'} 
-                  className={`px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all border text-center flex flex-col items-center justify-center gap-1.5 ${
-                    outputMode === 'single' ? 'bg-zinc-100 text-black border-zinc-200 shadow-sm' : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+                  className={`px-3 py-2.5 text-[11px] font-bold transition-all border text-center flex flex-col items-center justify-center gap-1.5 ${ outputMode === 'single' ? 'bg-btn-bg text-btn-fg border-text ' : 'bg-wash text-text-muted border-line hover:border-text hover:text-text' } disabled:opacity-30 disabled:cursor-not-allowed`}
                 >
                   <Square size={16} /> Satuan (Single)
                 </button>
                 <button
                   onClick={() => setOutputMode('set')}
                   disabled={isGenerating || imageType === 'realistic'}
-                  className={`px-3 py-2.5 rounded-lg text-[11px] font-bold transition-all border text-center flex flex-col items-center justify-center gap-1.5 ${
-                    outputMode === 'set' ? 'bg-zinc-100 text-black border-zinc-200 shadow-sm' : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-                  } disabled:opacity-30 disabled:cursor-not-allowed`}
+                  className={`px-3 py-2.5 text-[11px] font-bold transition-all border text-center flex flex-col items-center justify-center gap-1.5 ${ outputMode === 'set' ? 'bg-btn-bg text-btn-fg border-text ' : 'bg-wash text-text-muted border-line hover:border-text hover:text-text' } disabled:opacity-30 disabled:cursor-not-allowed`}
                 >
                   <LayoutGrid size={16} /> Set (Berbaris)
                 </button>
@@ -516,24 +492,20 @@ export default function ImageEnginePage() {
 
             {imageType === 'vector' ? (
               <>
-                <div className="space-y-3 pt-4 border-t border-white/5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Palette size={14}/> Vector Art Style</label>
+                <div className="space-y-3 pt-4 border-t border-line">
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Palette size={14}/> Vector Art Style</label>
                   <div className="flex flex-wrap gap-2">
                     {Object.values(DesignStyle).map((ds) => (
                         <button
                           key={ds}
                           onClick={() => setStyle(ds)}
                           disabled={isGenerating}
-                          className={`flex-grow text-center px-3 py-2 rounded-lg text-[10px] font-bold transition-all border relative group/stylebtn ${
-                            style === ds
-                              ? 'bg-zinc-100 text-black border-zinc-200 shadow-sm'
-                              : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-                          }`}
+                          className={`flex-grow text-center px-3 py-2 text-[10px] font-bold transition-all border relative group/stylebtn ${ style === ds ? 'bg-btn-bg text-btn-fg border-text ' : 'bg-wash text-text-muted border-line hover:border-text hover:text-text' }`}
                         >
                           {ds}
                           {/* 💡 Popup Hover Informasi / Rekomendasi Style */}
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-zinc-950 text-zinc-300 text-[10px] font-medium rounded-xl border border-white/10 shadow-2xl opacity-0 pointer-events-none group-hover/stylebtn:opacity-100 transition-opacity z-50 text-left leading-normal whitespace-normal">
-                            <span className="text-indigo-400 font-bold block mb-1">💡 Info & Rekomendasi:</span>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2.5 bg-bg text-text text-[10px] font-medium border border-line opacity-0 pointer-events-none group-hover/stylebtn:opacity-100 transition-opacity z-50 text-left leading-normal whitespace-normal">
+                            <span className="text-accent font-bold block mb-1">💡 Info & Rekomendasi:</span>
                             {STYLE_DESCRIPTIONS[ds]}
                           </div>
                         </button>
@@ -541,27 +513,25 @@ export default function ImageEnginePage() {
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-white/5">
-                   <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2"><ImageIcon size={14}/> Reference DNA (Optional)</label>
+                <div className="space-y-3 pt-4 border-t border-line">
+                   <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><ImageIcon size={14}/> Reference DNA (Optional)</label>
                    <div 
                       onClick={() => !isGenerating && fileInputRef.current?.click()}
                       onDrop={handleDrop}
                       onDragOver={(e)=>e.preventDefault()}
-                      className={`relative w-full h-28 rounded-xl border border-dashed transition-all flex flex-col items-center justify-center cursor-pointer ${
-                        isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-white/[0.02]'
-                      } ${referenceImage ? 'border-white/20 bg-black/40' : 'border-white/10 bg-black/20'}`}
+                      className={`relative w-full h-28 border border-dashed transition-all flex flex-col items-center justify-center cursor-pointer ${ isGenerating ? 'opacity-50 cursor-not-allowed' : 'hover:bg-wash' } ${referenceImage ? 'border-line bg-bg-elevated' : 'border-line bg-wash'}`}
                     >
                       {referenceImage ? (
                         <>
-                          <img src={referenceImage} alt="Reference" className="w-full h-full object-cover rounded-xl opacity-80" />
-                          <button onClick={(e) => { e.stopPropagation(); setReferenceImage(null); }} className="absolute -top-2 -right-2 p-1.5 bg-black/80 border border-white/10 text-white rounded-md shadow-lg z-20 hover:bg-rose-500/20 hover:text-rose-400 transition-colors">
+                          <img src={referenceImage} alt="Reference" className="w-full h-full object-cover opacity-80" />
+                          <button onClick={(e) => { e.stopPropagation(); setReferenceImage(null); }} className="absolute -top-2 -right-2 z-20 border border-line bg-bg p-1.5 text-text transition-colors duration-hover hover:border-text hover:bg-text hover:text-bg">
                             <X size={14} />
                           </button>
                         </>
                       ) : (
                         <div className="text-center">
-                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-2"><UploadCloud size={14} className="text-zinc-500" /></div>
-                          <div className="text-[10px] font-bold text-zinc-500 uppercase">Upload Reference</div>
+                          <div className="w-8 h-8 bg-wash flex items-center justify-center mx-auto mb-2"><UploadCloud size={14} className="text-text-muted" /></div>
+                          <div className="text-[10px] font-bold text-text-muted uppercase">Upload Reference</div>
                         </div>
                       )}
                       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files && processFile(e.target.files[0])} disabled={isGenerating} />
@@ -570,20 +540,16 @@ export default function ImageEnginePage() {
               </>
             ) : (
               <>
-                <div className="space-y-3 pt-4 border-t border-white/5">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Focus size={14}/> Realistic Photo Themes</label>
-                  <p className="text-xs text-zinc-500 mb-2">Pilih niche market untuk foto realistik Anda.</p>
+                <div className="space-y-3 pt-4 border-t border-line">
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Focus size={14}/> Realistic Photo Themes</label>
+                  <p className="text-xs text-text-muted mb-2">Pilih niche market untuk foto realistik Anda.</p>
                   <div className="flex flex-wrap gap-2">
                     {Object.values(RealisticTheme).map((rt) => (
                         <button
                           key={rt}
                           onClick={() => setTheme(rt)}
                           disabled={isGenerating}
-                          className={`flex-grow text-center px-3 py-2 rounded-lg text-[10px] font-bold transition-all border ${
-                            theme === rt
-                              ? 'bg-zinc-100 text-black border-zinc-200 shadow-sm'
-                              : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-                          }`}
+                          className={`flex-grow text-center px-3 py-2 text-[10px] font-bold transition-all border ${ theme === rt ? 'bg-btn-bg text-btn-fg border-text ' : 'bg-wash text-text-muted border-line hover:border-text hover:text-text' }`}
                         >
                           {rt}
                         </button>
@@ -593,15 +559,13 @@ export default function ImageEnginePage() {
               </>
             )}
 
-            <div className="space-y-3 pt-4 border-t border-white/5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Maximize2 size={14}/> Aspect Ratio</label>
+            <div className="space-y-3 pt-4 border-t border-line">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Maximize2 size={14}/> Aspect Ratio</label>
               <div className="grid grid-cols-4 gap-2">
                 {Object.values(AspectRatio).map((r) => (
                   <button
                     key={r} onClick={() => setRatio(r)} disabled={isGenerating}
-                    className={`px-2 py-2 rounded-lg text-[11px] font-mono font-bold transition-all border text-center ${
-                      ratio === r ? 'bg-zinc-100 text-black border-zinc-200 shadow-sm' : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-                    }`}
+                    className={`px-2 py-2 text-[11px] font-mono font-bold transition-all border text-center ${ ratio === r ? 'bg-btn-bg text-btn-fg border-text ' : 'bg-wash text-text-muted border-line hover:border-text hover:text-text' }`}
                   >
                     {r}
                   </button>
@@ -609,17 +573,15 @@ export default function ImageEnginePage() {
               </div>
             </div>
 
-            <div className="space-y-3 pt-4 border-t border-white/5">
-              <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+            <div className="space-y-3 pt-4 border-t border-line">
+              <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2">
                 <Hash size={14}/> Jumlah Output (Batch)
               </label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map((num) => (
                   <button
                     key={num} onClick={() => setTotalImages(num)} disabled={isGenerating}
-                    className={`flex-1 py-2 rounded-lg text-[11px] font-bold transition-all border text-center ${
-                      totalImages === num ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40 shadow-sm' : 'bg-black/20 text-zinc-500 border-white/5 hover:border-white/10 hover:text-zinc-300'
-                    }`}
+                    className={`flex-1 py-2 text-[11px] font-medium transition-colors duration-hover border text-center ${ totalImages === num ? 'bg-btn-bg text-btn-fg border-text' : 'bg-wash text-text-muted border-line hover:border-text hover:text-text' }`}
                   >
                     {num} Gambar
                   </button>
@@ -632,12 +594,12 @@ export default function ImageEnginePage() {
 
         {/* KOLOM KANAN: WORKSPACE & GALLERY */}
         <div className="lg:col-span-8 flex flex-col space-y-6">
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6 flex flex-col relative overflow-hidden">
+          <div className="bg-bg border border-line p-6 flex flex-col relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-[0.02] pointer-events-none"><Layers size={100}/></div>
              
              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-3">
                 <div className="flex items-center gap-4">
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2"><Sparkles size={14}/> Master Prompt Instruksi</label>
+                  <label className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-2"><Sparkles size={14}/> Master Prompt Instruksi</label>
                 </div>
              </div>
 
@@ -646,23 +608,18 @@ export default function ImageEnginePage() {
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={isGenerating}
                 placeholder={imageType === 'vector' ? "Masukkan prompt instruksi detail Anda di sini. Teks ini akan dikirim murni langsung ke Imagen..." : "Masukkan prompt adegan fotografi Anda di sini. Teks ini akan dikirim murni langsung ke Imagen..."}
-                className={`w-full bg-black/40 border rounded-xl px-4 py-3 text-sm font-medium text-white resize-none h-28 focus:outline-none transition-all shadow-inner custom-scrollbar relative z-10 ${
-                  isSimilar ? "border-amber-500/30 focus:border-amber-500/50 placeholder-zinc-600" : "border-white/5 focus:border-white/20 placeholder-zinc-600"
-                }`}
+                className={`w-full bg-bg-elevated border px-4 py-3 text-sm font-medium text-text resize-none h-28 focus:outline-none transition-all custom-scrollbar relative z-10 ${ isSimilar ? "border-line focus:border-text placeholder:text-text-faint" : "border-line focus:border-text placeholder:text-text-faint" }`}
               />
               
               <div className="mt-2 flex items-center justify-between">
-                <div className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold transition-all shadow-inner w-max ${
-                     !prompt ? 'bg-white/5 border-white/5 text-zinc-500' :
-                     isSimilar ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                 }`}>
+                <div className={`px-3 py-2.5 border flex items-center gap-2 text-[10px] uppercase tracking-widest font-medium w-max ${ !prompt ? 'bg-wash border-line text-text-muted' : isSimilar ? 'border-accent text-accent' : 'border-line text-text' }`}>
                     {
                       !prompt ? <><AlertCircle size={14}/> Menunggu Input...</> :
                       isSimilar ? <><AlertTriangle size={14}/> Prompt Duplikat</> : 
                       <><CheckCircle2 size={14}/> Prompt Tersedia (Unik)</>
                     }
                  </div>
-                 <span className="text-xs text-indigo-400/80 font-medium flex items-center gap-1">
+                 <span className="text-xs text-accent font-medium flex items-center gap-1">
                     <Command size={12}/> Prompt Langsung ke Imagen (Direct)
                  </span>
               </div>
@@ -671,7 +628,7 @@ export default function ImageEnginePage() {
                 <button
                   onClick={handleGenerate}
                   disabled={isGenerating || !prompt}
-                  className={`w-full relative overflow-hidden group/btn bg-zinc-100 text-black py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:bg-white active:scale-[0.98]`}
+                  className="btn-primary w-full disabled:cursor-not-allowed"
                 >
                   <span className="relative z-10 flex items-center gap-3">
                     {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
@@ -680,9 +637,9 @@ export default function ImageEnginePage() {
                 </button>
 
                 {isGenerating && (
-                  <div className="w-full h-1.5 bg-black/40 border border-white/5 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} className="h-full bg-zinc-200 relative">
-                      <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse" />
+                  <div className="w-full h-1.5 bg-bg-elevated border border-line overflow-hidden">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} className="h-full bg-btn-bg relative">
+                      <div className="absolute inset-0 bg-wash w-full h-full animate-pulse" />
                     </motion.div>
                   </div>
                 )}
@@ -690,15 +647,15 @@ export default function ImageEnginePage() {
           </div>
 
           {error && (
-             <div className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-xl flex items-center gap-3 text-rose-400 text-xs font-bold">
+             <div className="bg-wash border border-line p-4 flex items-center gap-3 text-accent text-xs font-bold">
                <AlertCircle size={16} /> {error}
              </div>
           )}
 
-          <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-6 min-h-[400px]">
-            <div className="flex items-center justify-between mb-5 border-b border-white/5 pb-4">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2.5">
-                <ImageIcon className="w-4 h-4 text-zinc-400" />
+          <div className="bg-bg border border-line p-6 min-h-[400px]">
+            <div className="flex items-center justify-between mb-5 border-b border-line pb-4">
+              <h2 className="text-sm font-bold text-text flex items-center gap-2.5">
+                <ImageIcon className="w-4 h-4 text-text-muted" />
                 Asset Collection Gallery
               </h2>
               
@@ -706,7 +663,7 @@ export default function ImageEnginePage() {
                 <button 
                   onClick={handleDownloadAllZip}
                   disabled={isGenerating || isDownloadingZip}
-                  className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 text-white px-3 py-2 rounded-lg border border-white/5 transition-all active:scale-95 shadow-inner disabled:opacity-50"
+                  className="btn-ghost h-9 px-3 text-[11px] uppercase tracking-[0.16em]"
                 >
                   {isDownloadingZip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
                   Download (.ZIP)
@@ -716,8 +673,8 @@ export default function ImageEnginePage() {
 
             {images.length === 0 && !isGenerating ? (
                <div className="h-[250px] flex flex-col items-center justify-center text-center">
-                 <div className="p-4 bg-white/5 rounded-full mb-3 border border-white/5"><Layers size={24} className="text-zinc-600" /></div>
-                 <p className="text-[11px] font-mono uppercase tracking-widest text-zinc-500">System Idle - Awaiting Input</p>
+                 <div className="p-4 bg-wash mb-3 border border-line"><Layers size={24} className="text-text-faint" /></div>
+                 <p className="text-[11px] font-mono uppercase tracking-widest text-text-muted">System Idle - Awaiting Input</p>
                </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -729,21 +686,21 @@ export default function ImageEnginePage() {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.1 }}
                       onClick={() => setSelectedImage(img)}
-                      className="group relative aspect-square rounded-xl bg-black/40 border border-white/5 overflow-hidden cursor-pointer transition-all hover:border-white/20 hover:z-10"
+                      className="group relative aspect-square bg-bg-elevated border border-line overflow-hidden cursor-pointer transition-all hover:border-text hover:z-10"
                     >
                       <img src={img.url} alt={img.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center backdrop-blur-[2px]">
-                        <Maximize2 size={20} className="text-white" />
+                      <div className="absolute inset-0 bg-bg/80 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center">
+                        <Maximize2 size={20} className="text-text" />
                       </div>
-                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/80 backdrop-blur-md rounded border border-white/10 text-[9px] font-mono text-zinc-300 uppercase font-bold">
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-bg/90 border border-line text-[9px] font-mono text-text uppercase font-bold">
                         {img.title}
                       </div>
                     </motion.div>
                   ))}
                   {isGenerating && images.length < totalImages && (
-                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="aspect-square rounded-xl bg-black/40 border border-dashed border-white/10 flex flex-col items-center justify-center shadow-inner">
-                       <Loader2 size={20} className="text-zinc-500 animate-spin mb-3" />
-                       <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest text-center px-4">
+                     <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="aspect-square bg-bg-elevated border border-dashed border-line flex flex-col items-center justify-center">
+                       <Loader2 size={20} className="text-text-muted animate-spin mb-3" />
+                       <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest text-center px-4">
                          Rendering Layout...
                        </span>
                      </motion.div>
@@ -758,16 +715,16 @@ export default function ImageEnginePage() {
       {/* ALERT TOKEN HABIS */}
       <AnimatePresence>
         {showTokenAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-[#0a0a0a] border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-8 text-center">
-              <div className="w-12 h-12 bg-rose-500/10 rounded-xl border border-rose-500/20 flex items-center justify-center mx-auto mb-5">
-                <AlertCircle className="w-6 h-6 text-rose-500" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/90">
+            <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98, y: 10 }} className="bg-bg border border-line w-full max-w-sm p-8 text-center">
+              <div className="w-12 h-12 bg-wash border border-line flex items-center justify-center mx-auto mb-5">
+                <AlertCircle className="w-6 h-6 text-accent" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Insufficient Quota</h3>
-              <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
-                Anda tidak memiliki cukup Studio Credits. <br/> Sisa: <span className="text-rose-400 font-bold">{tokenBalance} Tokens</span>. Batch memerlukan {totalImages} token.
+              <h3 className="text-lg font-bold text-text mb-2">Insufficient Quota</h3>
+              <p className="text-text-muted text-sm mb-6 leading-relaxed">
+                Anda tidak memiliki cukup Studio Credits. <br/> Sisa: <span className="text-accent font-bold">{tokenBalance} Tokens</span>. Batch memerlukan {totalImages} token.
               </p>
-              <button onClick={() => setShowTokenAlert(false)} className="w-full bg-white/5 border border-white/10 text-white font-bold text-sm py-3 rounded-lg hover:bg-white/10 transition-colors active:scale-95">
+              <button onClick={() => setShowTokenAlert(false)} className="btn-ghost w-full">
                 Dismiss
               </button>
             </motion.div>
@@ -813,45 +770,45 @@ function ImageModal({ image, onClose }: { image: GeneratedImage, onClose: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-      <motion.button onClick={onClose} className="absolute top-6 right-6 p-2 text-zinc-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-md transition-all border border-white/10 z-50">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/90 p-4">
+      <motion.button onClick={onClose} className="absolute top-6 right-6 z-50 border border-line p-2 text-text-muted transition-colors duration-hover hover:border-text hover:bg-text hover:text-bg">
         <X size={20} />
       </motion.button>
 
-      <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-[#0a0a0a] border border-white/5 rounded-[2rem] overflow-hidden max-w-5xl w-full max-h-[90vh] flex flex-col md:flex-row shadow-2xl">
-        <div className="flex-[1.5] bg-black/40 flex items-center justify-center p-8 relative min-h-[300px] border-b md:border-b-0 md:border-r border-white/5">
-          <div className="absolute inset-0 bg-[radial-gradient(#ffffff08_1px,transparent_1px)] [background-size:20px_20px]" />
-          <img src={image.url} alt="Detail" className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl relative z-10 border border-white/5" />
+      <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} className="bg-bg border border-line overflow-hidden max-w-5xl w-full max-h-[90vh] flex flex-col md:flex-row">
+        <div className="flex-[1.5] bg-bg-elevated flex items-center justify-center p-8 relative min-h-[300px] border-b md:border-b-0 md:border-r border-line">
+          <div className="absolute inset-0 bg-[radial-gradient(var(--line)_1px,transparent_1px)] [background-size:20px_20px]" />
+          <img src={image.url} alt="Detail" className="max-w-full max-h-[70vh] object-contain relative z-10 border border-line" />
         </div>
         
         <div className="w-full md:w-[350px] p-8 flex flex-col overflow-y-auto custom-scrollbar">
             <div className="mb-6">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1 block">Asset View</span>
-              <h3 className="text-lg font-bold text-white uppercase tracking-tight">{image.title}</h3>
+              <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest mb-1 block">Asset View</span>
+              <h3 className="text-lg font-bold text-text uppercase tracking-tight">{image.title}</h3>
             </div>
             
             <div className="space-y-5 flex-1">
-                <div className="p-4 bg-white/[0.02] rounded-xl border border-white/5">
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-widest block mb-2 font-bold">Base Prompt</label>
-                    <p className="text-zinc-200 text-xs font-medium leading-relaxed">&quot;{image.prompt}&quot;</p>
+                <div className="p-4 bg-wash border border-line">
+                    <label className="text-[10px] text-text-muted uppercase tracking-widest block mb-2 font-bold">Base Prompt</label>
+                    <p className="text-text text-xs font-medium leading-relaxed">&quot;{image.prompt}&quot;</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-white/[0.02] rounded-xl border border-white/5">
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-widest block mb-1">Style / Theme</label>
-                    <p className="text-zinc-200 text-[11px] font-bold uppercase truncate">{image.style}</p>
+                  <div className="p-3 bg-wash border border-line">
+                    <label className="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Style / Theme</label>
+                    <p className="text-text text-[11px] font-bold uppercase truncate">{image.style}</p>
                   </div>
-                  <div className="p-3 bg-white/[0.02] rounded-xl border border-white/5" title={image.eventContext}>
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-widest block mb-1">Event / Season</label>
-                    <p className="text-zinc-200 text-[11px] font-bold uppercase truncate">{image.eventContext}</p>
+                  <div className="p-3 bg-wash border border-line" title={image.eventContext}>
+                    <label className="text-[10px] text-text-muted uppercase tracking-widest block mb-1">Event / Season</label>
+                    <p className="text-text text-[11px] font-bold uppercase truncate">{image.eventContext}</p>
                   </div>
                 </div>
             </div>
 
             <div className="mt-8 space-y-2.5">
-                <button onClick={() => handleDownload('png')} className="w-full bg-zinc-100 text-black h-11 rounded-lg text-sm font-bold flex items-center justify-center gap-2 hover:bg-white active:scale-[0.98] transition-all">
+                <button onClick={() => handleDownload('png')} className="btn-primary w-full">
                    <Download size={16} /> Download Murni PNG
                 </button>
-                <button onClick={() => handleDownload('jpg')} className="w-full bg-white/5 border border-white/5 text-zinc-400 hover:text-white hover:bg-white/10 h-11 rounded-lg text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                <button onClick={() => handleDownload('jpg')} className="btn-ghost w-full">
                    <Download size={14} /> Standard JPEG
                 </button>
             </div>

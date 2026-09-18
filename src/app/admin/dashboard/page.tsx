@@ -1,19 +1,11 @@
-// src/app/admin/dashboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { motion } from "framer-motion";
-import { 
-  Users, 
-  Coins, 
-  Activity, 
-  TrendingUp, 
-  Clock, 
-  ShieldAlert,
-  Zap,
-  LayoutGrid
-} from "lucide-react";
+import { DisplayTitle } from "@/components/ui/DisplayTitle";
+import { Stamp } from "@/components/ui/Stamp";
+import { cn } from "@/lib/cn";
 
 type Stats = {
   totalUsers: number;
@@ -31,25 +23,20 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function fetchStats() {
-      // Hitung Total User
       const { count: usersCount } = await supabase
         .from("profiles")
-        .select("*", { count: 'exact', head: true });
+        .select("*", { count: "exact", head: true });
 
-      // Hitung Total Token & Penggunaan
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("token_balance");
-      
+      const { data: profiles } = await supabase.from("profiles").select("token_balance");
       const { count: usageCount } = await supabase
         .from("tools_usage")
-        .select("*", { count: 'exact', head: true });
+        .select("*", { count: "exact", head: true });
 
       const totalTokens = profiles?.reduce((sum, p) => sum + p.token_balance, 0) || 0;
 
       setStats({
         totalUsers: usersCount || 0,
-        totalTokens: totalTokens,
+        totalTokens,
         totalUsage: usageCount || 0,
       });
       setLoading(false);
@@ -58,91 +45,92 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
-  const statCards = [
-    { label: "Registered Creators", value: stats.totalUsers, icon: Users, color: "text-blue-400", bg: "bg-blue-400/10" },
-    { label: "Tokens in Circulation", value: stats.totalTokens, icon: Coins, color: "text-amber-400", bg: "bg-amber-400/10" },
-    { label: "Cloud Operations", value: stats.totalUsage, icon: Activity, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+  const kpis = [
+    { label: "Accounts", value: stats.totalUsers, href: "/admin/users" },
+    { label: "Tokens in pool", value: stats.totalTokens },
+    { label: "Operations", value: stats.totalUsage },
   ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      className="max-w-6xl mx-auto space-y-10"
-    >
-      {/* Header Overview */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/5 pb-8">
+    <div>
+      <header className="mb-6 flex flex-col gap-4 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-              <LayoutGrid className="w-5 h-5 text-zinc-400" />
-            </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">System Overview</h1>
-          </div>
-          <p className="text-zinc-500 font-medium">Monitoring real-time activity and resource distribution across <span className="text-zinc-300 font-bold">My Tools</span> ecosystem.</p>
+          <Stamp className="mb-2">Studio</Stamp>
+          <DisplayTitle as="h1" className="text-3xl md:text-4xl">
+            Overview.
+          </DisplayTitle>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-full">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Network Stable</span>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {statCards.map((card, i) => (
-          <motion.div
-            key={card.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="bg-white/[0.02] border border-white/5 p-8 rounded-[2rem] relative overflow-hidden group hover:bg-white/[0.04] transition-all"
+        <nav className="flex flex-wrap gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.16em]">
+          <Link
+            href="/admin/users"
+            className="text-text-muted transition-colors duration-hover hover:text-accent"
           >
-            <div className={`p-3 w-fit rounded-xl ${card.bg} ${card.color} mb-6 border border-white/5`}>
-              <card.icon className="w-6 h-6" />
-            </div>
-            <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{card.label}</p>
-            <h2 className="text-4xl font-black text-white tracking-tighter">
-              {loading ? "..." : card.value.toLocaleString()}
-            </h2>
-            <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-              <card.icon size={80} />
-            </div>
-          </motion.div>
-        ))}
+            Users
+          </Link>
+          <Link
+            href="/admin/settings"
+            className="text-text-muted transition-colors duration-hover hover:text-accent"
+          >
+            Settings
+          </Link>
+        </nav>
+      </header>
+
+      <div className="overflow-hidden border border-line">
+        <div className="grid grid-cols-1 gap-px bg-line sm:grid-cols-3">
+          {kpis.map((kpi) => {
+            const inner = (
+              <>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-text-faint">{kpi.label}</p>
+                <p className="mt-2 text-2xl font-black tabular-nums text-text">
+                  {loading ? "—" : kpi.value.toLocaleString()}
+                </p>
+              </>
+            );
+            const cls = "bg-bg px-4 py-4";
+            return kpi.href ? (
+              <Link
+                key={kpi.label}
+                href={kpi.href}
+                className={cn(cls, "transition-colors duration-hover hover:bg-wash")}
+              >
+                {inner}
+              </Link>
+            ) : (
+              <div key={kpi.label} className={cls}>
+                {inner}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Bottom Section: Quick Actions / System Health */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pt-4">
-        <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-8 space-y-6">
-          <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-3 uppercase tracking-widest">
-            <Zap className="w-4 h-4 text-amber-500" />
-            Maintenance & Health
-          </h3>
-          <div className="space-y-4">
-             <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-4">
-                   <div className="p-2 bg-white/5 rounded-lg"><Clock className="w-4 h-4 text-zinc-500"/></div>
-                   <span className="text-xs font-bold text-zinc-400">Auto-Token Reset (pg_cron)</span>
-                </div>
-                <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full border border-emerald-500/20 uppercase">Active</span>
-             </div>
-             <div className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-4">
-                   <div className="p-2 bg-white/5 rounded-lg"><ShieldAlert className="w-4 h-4 text-zinc-500"/></div>
-                   <span className="text-xs font-bold text-zinc-400">Supabase API Security (RLS)</span>
-                </div>
-                <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full border border-emerald-500/20 uppercase">Locked</span>
-             </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <section className="border border-line">
+          <div className="border-b border-line px-4 py-3">
+            <Stamp>Health</Stamp>
           </div>
-        </div>
-
-        <div className="bg-white/[0.01] border border-white/5 rounded-3xl p-8 flex flex-col items-center justify-center text-center space-y-4">
-           <div className="p-4 bg-white/5 rounded-full border border-white/10"><TrendingUp className="w-8 h-8 text-zinc-500" /></div>
-           <h3 className="text-lg font-bold text-white">Scale your Workspace</h3>
-           <p className="text-xs text-zinc-500 max-w-xs font-medium">Saat ini sistem berjalan pada infrastruktur free tier yang dioptimalkan. Pantau terus penggunaan token di dashboard admin.</p>
-        </div>
+          <div className="divide-y divide-line text-sm">
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-text-muted">Auto-token reset</span>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-accent">Active</span>
+            </div>
+            <div className="flex items-center justify-between px-4 py-3">
+              <span className="text-text-muted">Row level security</span>
+              <span className="text-[10px] uppercase tracking-[0.16em] text-accent">Locked</span>
+            </div>
+          </div>
+        </section>
+        <section className="border border-line">
+          <div className="border-b border-line px-4 py-3">
+            <Stamp>Note</Stamp>
+          </div>
+          <p className="px-4 py-4 text-sm leading-relaxed text-text-muted">
+            Sistem berjalan di infrastruktur hemat. Pantau kuota di Users, jangan biarkan
+            token beredar tanpa pemakaian.
+          </p>
+        </section>
       </div>
-
-    </motion.div>
+    </div>
   );
 }

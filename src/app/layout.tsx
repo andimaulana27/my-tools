@@ -1,13 +1,33 @@
-// src/app/layout.tsx
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { THEME_BOOTSTRAP } from "@/lib/theme";
 
-const inter = Inter({ subsets: ["latin"] });
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F4F1EA" },
+    { media: "(prefers-color-scheme: dark)", color: "#111111" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
-  title: "My Tools - AI Workspace",
-  description: "Private AI productivity suite and metadata engine for digital creators.",
+  title: {
+    default: "Tools — Private AI workspace",
+    template: "%s — Tools",
+  },
+  description: "Private AI productivity suite for metadata, assets, and Adobe Stock workflows.",
 };
 
 export default function RootLayout({
@@ -16,8 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className="dark">
-      <body className={`${inter.className} bg-[#050505] text-zinc-200 antialiased selection:bg-white/10 selection:text-white`}>
+    <html lang="id" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-bg font-sans text-text antialiased`}>
         {children}
       </body>
     </html>

@@ -1,45 +1,178 @@
-/* src/app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground;
+:root,
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111111;
+  --bg-elevated: #1a1a1a;
+  --line: rgba(244, 241, 234, 0.1);
+  --text: #f4f1ea;
+  --text-muted: #a39e94;
+  --text-faint: #7a756c;
+  --accent: #c41e3a;
+  --btn-bg: #f4f1ea;
+  --btn-fg: #111111;
+  --wash: rgba(244, 241, 234, 0.045);
+  --select: rgba(196, 30, 58, 0.28);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f1ea;
+  --bg-elevated: #ebe6dc;
+  --line: rgba(22, 22, 22, 0.1);
+  --text: #161616;
+  --text-muted: #5c574f;
+  --text-faint: #7a756c;
+  --accent: #b42318;
+  --btn-bg: #161616;
+  --btn-fg: #f4f1ea;
+  --wash: rgba(22, 22, 22, 0.04);
+  --select: rgba(180, 35, 24, 0.22);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 
-/* Custom scrollbar untuk tampilan yang lebih poles */
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+.bg-field {
+  position: relative;
+}
+
+.site-wrap {
+  width: 100%;
+  max-width: 96rem;
+  padding-inline: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .site-wrap {
+    width: min(96rem, calc(100% - 6rem));
+    padding-inline: 2rem;
+  }
+}
+
+.site-grid {
+  position: relative;
+}
+
+.site-grid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--line), var(--line)),
+    linear-gradient(var(--line), var(--line)),
+    linear-gradient(var(--line), var(--line));
+  background-size: 1px 100%;
+  background-position: 25% 0, 50% 0, 75% 0;
+  background-repeat: no-repeat;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 72%);
+  opacity: 0.7;
+}
+
+::selection {
+  background: var(--select);
+  color: var(--text);
+}
+
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-faint) var(--bg);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-faint) transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 ::-webkit-scrollbar-track {
-  background: #09090b;
+  background: var(--bg);
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
-  border-radius: 4px;
+  background: var(--text-faint);
+  border: 0;
+  border-radius: 0;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: var(--text-muted);
 }
 
-/* Utilitas delay animasi jika diperlukan */
-.animation-delay-2000 {
-  animation-delay: 2s;
+::-webkit-scrollbar-corner {
+  background: var(--bg);
 }
 
-@keyframes move-grid {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(24px); }
+.input-admin {
+  @apply w-full border border-line bg-bg-elevated px-3 py-3 text-sm text-text placeholder:text-text-faint focus:border-text focus:outline-none;
 }
 
-.animate-grid {
-  animation: move-grid 4s linear infinite;
+.panel {
+  @apply border border-line bg-bg;
 }
 
-/* Custom scrollbar minimalis untuk mencocokkan tema */
+.btn-primary {
+  @apply inline-flex h-11 items-center justify-center gap-2 bg-btn-bg px-6 text-sm font-medium text-btn-fg transition-opacity duration-hover hover:opacity-80 disabled:opacity-50;
+}
+
+.btn-ghost {
+  @apply inline-flex h-11 items-center justify-center gap-2 border border-line bg-transparent px-6 text-sm font-medium text-text transition-colors duration-hover hover:border-text hover:bg-text hover:text-bg disabled:opacity-50;
+}
+
+.chip {
+  @apply border border-line bg-wash px-3 py-2 text-xs font-medium text-text-muted transition-colors duration-hover hover:border-text hover:text-text;
+}
+
+.chip-on {
+  @apply border-text bg-btn-bg text-btn-fg hover:border-text hover:text-btn-fg;
+}
+
+.tab-bar {
+  @apply flex w-fit overflow-x-auto border border-line;
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+
+.field-label {
+  @apply mb-2 block text-[10px] uppercase tracking-[0.2em] text-text-faint;
+}
+
+.nav-link {
+  @apply text-[11px] uppercase tracking-[0.18em] transition-colors duration-hover;
+}
+
+.text-stroke {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--text);
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 4px;
 }
@@ -49,10 +182,19 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  background: var(--text-faint);
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
